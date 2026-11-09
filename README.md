@@ -164,6 +164,31 @@ Open your browser and go to **http://localhost:3000**.
 7. Go to **Settings**, then **Domains**, then **Generate Domain**
 8. Your app is live.
 
+## Deploy to Vercel
+
+Vercel detects the Express app in `server.js` and serves it as a Function. In the Vercel
+project, keep the repository root as the **Root Directory** and use the **Express**
+framework preset (or automatic detection). Add the required server-side variables under
+**Settings → Environment Variables** for each environment you deploy:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_ANON_KEY`
+- `JWT_SECRET` — a private random value of at least 32 characters
+- `APP_URL` — the production site URL, such as `https://klasora.vercel.app`
+
+`JWT_SECRET` is required at startup; without it, the function fails before serving any
+request. Do not set `PORT` on Vercel. Add `GROQ_API_KEY` only if AI features are needed.
+Push notifications are optional; if enabled, configure a matching
+`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` pair and optional `VAPID_EMAIL`. Never put secret
+values in source control or support messages. Redeploy after changing environment
+variables.
+
+In the Supabase Dashboard, set the Auth **Site URL** to the production URL and include
+the production URL and relevant auth callback URLs in the redirect URL allowlist.
+Vercel Functions do not provide persistent WebSocket connections, so Socket.IO live
+chat/presence/call features require a separate WebSocket-capable host.
+
 ## Project structure
 
 ```
