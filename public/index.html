@@ -40,46 +40,61 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
 /* ── AUTH ── */
-#authScreen{position:fixed;inset:0;display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);z-index:999;background:#fff;color:#121923;overflow:auto;}
-.auth-form-panel{display:flex;align-items:center;justify-content:center;min-width:0;padding:40px 32px;background:#fff;}
-.auth-wrap{width:100%;max-width:430px;padding:1rem;}
+#authScreen{position:fixed;inset:0;display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);z-index:999;background:#f2f8f8;color:#14242a;overflow:auto;}
+.auth-form-panel{display:flex;align-items:center;justify-content:center;min-width:0;padding:40px 32px;background:linear-gradient(145deg,#f6fbfb,#eaf4f3);}
+.auth-wrap{width:100%;max-width:430px;padding:34px;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.94);border-radius:24px;box-shadow:0 24px 70px rgba(8,49,54,.12);backdrop-filter:blur(18px);}
 .auth-header{margin-bottom:1.65rem;}
 .auth-header h1{font-family:'Outfit',sans-serif;font-size:clamp(1.7rem,2.4vw,2.1rem);font-weight:600;letter-spacing:-.04em;color:#121923;}
 .auth-header p{margin-top:.4rem;color:#68717c;font-size:.82rem;line-height:1.55;}
 .auth-mobile-brand{display:none;}
-.auth-brand-panel{display:flex;align-items:center;justify-content:center;min-width:0;padding:48px;background:linear-gradient(145deg,#e9fbff,#d8f6fb 54%,#e7fbff);}
-.auth-brand-panel img{display:block;width:min(100%,520px);height:auto;max-height:80vh;object-fit:contain;}
+.auth-brand-panel{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;min-width:0;padding:48px;overflow:hidden;color:#f5ffff;text-align:center;background:radial-gradient(ellipse at 50% 32%,rgba(25,177,163,.25),transparent 46%),linear-gradient(145deg,#073944,#07505a 50%,#062f3b);}
+.auth-brand-panel:before,.auth-brand-panel:after{position:absolute;content:"";width:420px;height:420px;border:1px solid rgba(142,239,221,.12);border-radius:50%;pointer-events:none;}
+.auth-brand-panel:before{top:-230px;right:-170px;}
+.auth-brand-panel:after{bottom:-300px;left:-180px;width:560px;height:560px;}
+.auth-brand-mark{position:relative;z-index:1;display:grid;width:220px;height:220px;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(221,255,249,.08);box-shadow:0 22px 70px rgba(0,0,0,.2),inset 0 0 40px rgba(123,255,231,.08);}
+.auth-brand-mark img{display:block;width:76%;height:76%;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(0,0,0,.16));}
+.auth-brand-copy{position:relative;z-index:1;max-width:480px;}
+.auth-brand-copy strong{display:block;font:800 clamp(2.4rem,4.4vw,4.4rem)/1 'Outfit',sans-serif;letter-spacing:.08em;color:#f4ffff;}
+.auth-brand-copy span{display:block;margin-top:12px;color:#b8d5d8;font-size:.76rem;font-weight:700;letter-spacing:.16em;}
+.auth-brand-copy p{margin-top:22px;color:#d9eeed;font-size:1rem;line-height:1.7;}
 .brand-logo-sidebar{display:block;width:102px;height:68px;object-fit:contain;padding:2px;background:#fff;border-radius:9px;flex-shrink:0;}
 .auth-card{background:transparent;border:0;border-radius:0;padding:0;box-shadow:none;}
-.auth-tabs{display:flex;gap:22px;border-bottom:1px solid #e8ebef;margin:0 0 1.3rem;}
+.auth-tabs{display:flex;gap:22px;border-bottom:1px solid #dfe9e8;margin:0 0 1.3rem;}
 .auth-tab{padding:0 0 11px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;color:#7a838d;font-size:.84rem;font-weight:600;cursor:pointer;}
-.auth-tab.active{border-color:#3479dc;color:#3479dc;}
+.auth-tab.active{border-color:#078d88;color:#087e7b;}
 .field{margin-bottom:1rem;}
 .field label{font-size:.77rem;font-weight:600;color:#313a45;display:block;margin-bottom:.42rem;}
-.field input{width:100%;background:#f8fafc;border:1px solid #dfe4ea;border-radius:10px;padding:.82rem .95rem;color:#1b2430;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;outline:none;transition:all .2s;}
-.field input:focus{border-color:#3479dc;box-shadow:0 0 0 3px rgba(52,121,220,.12);}
+.field input{width:100%;background:rgba(249,252,252,.88);border:1px solid #d9e4e3;border-radius:10px;padding:.82rem .95rem;color:#1b2b30;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;outline:none;transition:all .2s;}
+.field input:focus{border-color:#078d88;box-shadow:0 0 0 3px rgba(7,141,136,.12);}
 .field input::placeholder{color:#929ba6;}
-.auth-btn{width:100%;background:#3479dc;border:1px solid #3479dc;color:white;padding:.78rem 1rem;border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.3rem;}
-.auth-btn:hover{background:#286ac8;box-shadow:0 6px 16px rgba(52,121,220,.2);}
+.auth-btn{width:100%;background:linear-gradient(110deg,#0b8d86,#08747b);border:1px solid #087c7b;color:white;padding:.78rem 1rem;border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.3rem;}
+.auth-btn:hover{background:linear-gradient(110deg,#087a75,#075f68);box-shadow:0 6px 16px rgba(7,112,113,.2);}
 .auth-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 .auth-error{color:#bd3434;font-size:.74rem;margin-top:.5rem;padding:.5rem .75rem;background:#fff0f0;border-radius:8px;display:none;}
-.auth-google{margin-top:.65rem;background:#fff;color:#27323d;border:1px solid #dfe4ea;}
-.auth-forgot-link{display:block;width:max-content;margin:.65rem 0 0 auto;padding:0;border:0;background:transparent;color:#3479dc;font-size:.7rem;cursor:pointer;}
-.auth-separator{display:flex;align-items:center;gap:12px;margin:1rem 0;color:#9aa2ab;font-size:.72rem;}
-.auth-separator:before,.auth-separator:after{content:"";height:1px;flex:1;background:#e8ebef;}
+.auth-provider-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:.65rem;padding:.72rem .9rem;border:1px solid #d9e4e3;border-radius:9px;color:#27383d;background:rgba(255,255,255,.76);font:600 .8rem 'Plus Jakarta Sans',sans-serif;cursor:pointer;}
+.auth-provider-btn:hover:not(:disabled){background:#fff;border-color:#a9c5c2;}
+.auth-provider-btn:disabled{color:#7b878a;background:#f2f5f4;cursor:not-allowed;}
+.auth-provider-mark{display:grid;width:18px;height:18px;place-items:center;border-radius:50%;background:#fff;color:#162227;font-size:13px;font-weight:800;}
+.auth-provider-btn:disabled .auth-provider-mark{background:#e3e9e8;color:#657272;}
+.auth-remember-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:.2rem 0 .8rem;font-size:.7rem;}
+.auth-remember{display:inline-flex;align-items:center;gap:7px;color:#69777a;cursor:pointer;}
+.auth-remember input{width:14px;height:14px;margin:0;accent-color:#078d88;}
+.auth-forgot-link{display:block;width:max-content;margin:0 0 0 auto;padding:0;border:0;background:transparent;color:#087e7b;font-size:.7rem;cursor:pointer;}
+.auth-separator{display:flex;align-items:center;gap:12px;margin:.9rem 0;color:#9aa2ab;font-size:.7rem;}
+.auth-separator:before,.auth-separator:after{content:"";height:1px;flex:1;background:#e2e9e8;}
 #authScreen.is-forgot .auth-tabs,#authScreen.is-reset .auth-tabs{display:none;}
-@media(max-width:850px){
-  #authScreen{display:block;overflow:auto;background:#fff;}
-  .auth-form-panel{min-height:100%;padding:25px 22px 40px;}
-  .auth-wrap{max-width:430px;padding:0;}
+@media(max-width:900px){
+  #authScreen{display:block;overflow:auto;background:radial-gradient(ellipse at 50% -5%,rgba(19,151,143,.25),transparent 45%),linear-gradient(160deg,#073944,#062e3b 65%,#082d38);}
+  .auth-form-panel{min-height:100%;padding:25px 22px 40px;background:transparent;}
+  .auth-wrap{max-width:430px;padding:24px 22px;background:rgba(247,253,252,.96);border-color:rgba(255,255,255,.8);border-radius:22px;box-shadow:0 20px 55px rgba(0,0,0,.24);}
   .auth-brand-panel{display:none;}
-  .auth-mobile-brand{display:flex;align-items:center;flex-direction:column;margin:0 auto 25px;text-align:center;}
-  .auth-mobile-brand img{width:78px;height:78px;object-fit:contain;}
-  .auth-mobile-brand strong{margin-top:4px;color:#0b2944;font-family:'Outfit',sans-serif;font-size:1.25rem;font-weight:800;letter-spacing:.04em;}
-  .auth-mobile-brand span{margin-top:2px;color:#68717c;font-size:.52rem;font-weight:700;letter-spacing:.08em;}
+  .auth-mobile-brand{display:flex;align-items:center;flex-direction:column;margin:0 auto 18px;text-align:center;}
+  .auth-mobile-brand img{width:60px;height:60px;object-fit:contain;}
+  .auth-mobile-brand strong{margin-top:4px;color:#0b3741;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:.08em;}
+  .auth-mobile-brand span{margin-top:3px;color:#617b7d;font-size:.48rem;font-weight:700;letter-spacing:.08em;}
   .auth-header h1{font-size:1.5rem;}
 }
-@media(max-height:700px) and (max-width:850px){.auth-form-panel{align-items:flex-start;padding-top:12px;}.auth-mobile-brand{margin-bottom:13px;}.auth-mobile-brand img{width:56px;height:56px;}.auth-header{margin-bottom:1rem;}}
+@media(max-height:760px) and (max-width:900px){.auth-form-panel{align-items:flex-start;padding-top:14px;}.auth-mobile-brand{margin-bottom:12px;}.auth-mobile-brand img{width:48px;height:48px;}.auth-header{margin-bottom:1rem;}}
 
 /* ── APP SHELL ── */
 #appScreen{display:none;flex:1;height:100vh;overflow:hidden;}
@@ -464,11 +479,16 @@ video{border-radius:16px;background:#000;object-fit:cover;}
         <div id="loginForm">
           <div class="field"><label for="lEmail">Email</label><input type="email" id="lEmail" placeholder="you@gmail.com" autocomplete="email"></div>
           <div class="field"><label for="lPass">Password</label><input type="password" id="lPass" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+          <div class="auth-remember-row">
+            <label class="auth-remember"><input id="rememberMe" type="checkbox"> Remember me</label>
+            <button class="auth-forgot-link" type="button" onclick="showForgotPassword()">Forgot password?</button>
+          </div>
           <div class="auth-error" id="lErr" role="alert"></div>
           <button class="auth-btn" id="loginBtn" onclick="doLogin()">Login</button>
-          <button class="auth-btn auth-google" onclick="signInWithGoogle()">Sign in with Google</button>
+          <div class="auth-separator">or continue with</div>
+          <button class="auth-provider-btn" type="button" onclick="signInWithGoogle()"><span class="auth-provider-mark" aria-hidden="true">G</span>Sign in with Google</button>
           <div class="google-config-note" id="googleConfigNotice" role="status" aria-live="polite">Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.</div>
-          <button class="auth-forgot-link" type="button" onclick="showForgotPassword()">Forgot Password?</button>
+          <button class="auth-provider-btn" type="button" disabled title="Apple sign-in is not configured">Apple sign-in unavailable</button>
         </div>
         <div id="registerForm" style="display:none">
           <div class="field"><label for="rName">Your Full Name</label><input type="text" id="rName" placeholder="e.g. Jordan Lee" autocomplete="name"></div>
@@ -488,12 +508,14 @@ video{border-radius:16px;background:#000;object-fit:cover;}
           <div class="field"><label for="resetPass">New Password</label><input type="password" id="resetPass" placeholder="Min 8 characters" autocomplete="new-password"></div>
           <div class="auth-error" id="resetErr" role="alert"></div>
           <button class="auth-btn" id="resetBtn" onclick="updatePassword()">Update password</button>
+          <button class="auth-forgot-link" type="button" onclick="switchTab('login')">Back to login</button>
         </div>
       </div>
     </div>
   </section>
   <aside class="auth-brand-panel" aria-label="Klasora — Your clique, your circle, your campus">
-    <img src="/klasora-wordmark-tagline.png" alt="Klasora — Your clique, your circle, your campus">
+    <div class="auth-brand-mark"><img src="/klasora-icon.png" alt=""></div>
+    <div class="auth-brand-copy"><strong>KLASORA</strong><span>YOUR CLIQUE, YOUR CIRCLE, YOUR CAMPUS</span><p>A place to connect with your people, stay on top of class, and make progress together.</p></div>
   </aside>
 </div>
 
@@ -790,7 +812,8 @@ const EMOJIS        = ['😊','😂','🔥','❤️','👍','👏','😭','🎉'
 const CLIQUE_EMOJIS = ['📚','🎮','🏀','🎵','💻','🎨','⚽','🍕','✈️','🎭','🔬','📸','🏋️','🎯','💡'];
 const SERVER_URL    = '';
 
-let socket=null, token=localStorage.getItem('meno_token')||null, myUser=JSON.parse(localStorage.getItem('meno_user')||'null');
+let authStorage=sessionStorage.getItem('meno_token')?sessionStorage:localStorage;
+let socket=null, token=authStorage.getItem('meno_token')||null, myUser=JSON.parse(authStorage.getItem('meno_user')||'null');
 let pendingAttachment=null, pendingAttachmentPreviewUrl=null;
 let mediaRecorder=null, recordingStream=null, voiceChunks=[], pendingVoiceBlob=null, voicePreviewUrl=null, discardVoiceRecording=false;
 let activeId=null, activeType=null, activeRoomId=null;
@@ -799,6 +822,18 @@ let allItems=[], sideTab='chats', chatMode='dms';
 let selCliqueEmoji=CLIQUE_EMOJIS[0];
 let typTimer=null, typingUsers={};
 let aiVisible=false;
+
+function persistAuthSession(nextToken,nextUser,remember=true){
+  authStorage=remember?localStorage:sessionStorage;
+  const otherStorage=remember?sessionStorage:localStorage;
+  otherStorage.removeItem('meno_token');
+  otherStorage.removeItem('meno_user');
+  authStorage.setItem('meno_token',nextToken);
+  authStorage.setItem('meno_user',JSON.stringify(nextUser));
+}
+function persistAuthUser(user){
+  if(token) authStorage.setItem('meno_user',JSON.stringify(user));
+}
 
 // ── POMODORO STATE ────────────────────────────────────────────
 let pomState={ mode:'focus', running:false, secs:25*60, total:25*60, interval:null, sessToday:0, sessAll:0 };
@@ -817,13 +852,13 @@ async function init() {
     try{
       const d=await api('/api/auth/sync','POST',{accessToken:oauthAccessToken});
       token=d.token; myUser=d.user;
-      localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser));
+      persistAuthSession(token,myUser);
       history.replaceState(null,'',location.pathname);
       showApp();
       return;
     }catch(e){ clearAuth(); showAuth(); document.getElementById('lErr').textContent=e.message; document.getElementById('lErr').style.display='block'; return; }
   }
-  if(token&&myUser){ try{ myUser=await api('/api/me'); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp(); }catch{ clearAuth(); showAuth(); } }
+  if(token&&myUser){ try{ myUser=await api('/api/me'); persistAuthUser(myUser); showApp(); }catch{ clearAuth(); showAuth(); } }
   else showAuth();
 }
 
@@ -903,7 +938,7 @@ async function doLogin(){
   const email=document.getElementById('lEmail').value.trim(), password=document.getElementById('lPass').value;
   const err=document.getElementById('lErr'), btn=document.getElementById('loginBtn');
   err.style.display='none'; btn.disabled=true; btn.textContent='Signing in…';
-  try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp(); }
+  try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; persistAuthSession(token,myUser,document.getElementById('rememberMe').checked); showApp(); }
   catch(e){ err.textContent=e.message; err.style.display='block'; }
   finally{ btn.disabled=false; btn.textContent='Login'; }
 }
@@ -930,14 +965,18 @@ async function doRegister(){
     if(d.needsVerification){
       err.textContent=d.message; err.style.display='block'; return;
     }
-    token=d.token; myUser=d.user; localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp();
+    token=d.token; myUser=d.user; persistAuthSession(token,myUser); showApp();
   }
   catch(e){ err.textContent=e.message; err.style.display='block'; }
   finally{ btn.disabled=false; btn.textContent='Sign up'; }
 }
-function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); }
+function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); sessionStorage.removeItem('meno_token'); sessionStorage.removeItem('meno_user'); }
 function doLogout(){ if(socket)socket.disconnect(); window.KlasoraRefresh?.close(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
-function showAuth(){ document.getElementById('authScreen').style.display='flex'; document.getElementById('appScreen').classList.remove('show'); }
+function showAuth(){
+  document.getElementById('authScreen').style.display='';
+  document.getElementById('appScreen').classList.remove('show');
+  if(token) document.getElementById('rememberMe').checked=authStorage===localStorage;
+}
 
 // ── THEME ─────────────────────────────────────────────────────
 function applyTheme(t){
@@ -972,7 +1011,7 @@ function showApp(){
     toggleTheme,
     updateProfile:async changes=>{
       myUser=await api('/api/me/profile','PATCH',changes);
-      localStorage.setItem('meno_user',JSON.stringify(myUser));
+      persistAuthUser(myUser);
       renderMyProfile();
       return myUser;
     },
@@ -1104,7 +1143,7 @@ function editProfile(){
   if(bio===null)return;
   api('/api/me/profile','PATCH',{name,bio}).then(user=>{
     myUser=user;
-    localStorage.setItem('meno_user',JSON.stringify(user));
+    persistAuthUser(user);
     renderMyProfile();
     switchTab2('settings');
     showToast('✅','Profile updated','Your profile changes are saved');
