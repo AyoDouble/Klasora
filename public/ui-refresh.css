@@ -258,17 +258,10 @@
 .refresh-detail-back { display: inline-flex; gap: 7px; margin-bottom: 15px; border: 0; color: var(--refresh-muted); background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; }
 .refresh-mobile-menu { display: none; }
 
-/* Preserve the current sign-in, registration, and password-reset flows. */
-#authScreen { background-color: #11101a; background-image: radial-gradient(ellipse 52% 50% at 50% 0%,rgba(130,100,255,.25),transparent),radial-gradient(ellipse 40% 40% at 100% 100%,rgba(255,107,157,.08),transparent); }
-.auth-card { border-color: #ffffff14; border-radius: 22px; background: #191822; box-shadow: 0 26px 90px #0007; }
-.auth-tab { padding: .68rem; }
-.field input { border-radius: 10px; }
-.auth-btn { border-radius: 10px; }
-.google-config-note { margin: .55rem 0 0; color: var(--text2); font-size: .68rem; line-height: 1.55; text-align: center; }
-.brand-logo-auth { width: min(230px,70vw); height: min(230px,28vh); padding: 0; background: transparent; }
+/* Keep the auth screen aligned with the supplied Klasora sign-in references. */
+.google-config-note { margin: .55rem 0 0; color: #68717c; font-size: .68rem; line-height: 1.55; text-align: center; }
 .brand-logo-sidebar { width: 52px; height: 52px; padding: 0; background: transparent; }
 .brand-logo-intro { padding: 0; background: transparent; }
-@media(max-height:700px) { .brand-logo-auth { height: min(150px,23vh); } }
 @media(max-width:900px) {
   .refresh-shell { grid-template-columns: 210px minmax(0,1fr); }
   .refresh-content { padding-right: 23px; padding-left: 23px; }
