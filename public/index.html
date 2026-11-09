@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klasora — Your Clique Awaits</title>
-<link rel="icon" type="image/png" href="/klasora-logo.png">
-<link rel="apple-touch-icon" href="/klasora-logo.png">
+<link rel="icon" type="image/png" href="/klasora-icon.png">
+<link rel="apple-touch-icon" href="/klasora-icon.png">
 <link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/ui-refresh.css">
 <script src="/socket.io/socket.io.js"></script>
+<script src="/ui-refresh.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
 
@@ -38,25 +40,61 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
 /* ── AUTH ── */
-#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;background-image:radial-gradient(ellipse 60% 50% at 50% -10%,rgba(108,99,255,0.15),transparent);}
-.auth-wrap{width:100%;max-width:420px;padding:1.5rem;}
-.auth-header{text-align:center;margin-bottom:1.8rem;}
-.brand-logo-auth{display:block;width:min(230px,80%);height:154px;object-fit:contain;padding:.35rem;margin:0 auto .8rem;background:#fff;border-radius:14px;}
+#authScreen{position:fixed;inset:0;display:grid;grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);z-index:999;background:#f2f8f8;color:#14242a;overflow:auto;}
+.auth-form-panel{display:flex;align-items:center;justify-content:center;min-width:0;padding:40px 32px;background:linear-gradient(145deg,#f6fbfb,#eaf4f3);}
+.auth-wrap{width:100%;max-width:430px;padding:34px;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.94);border-radius:24px;box-shadow:0 24px 70px rgba(8,49,54,.12);backdrop-filter:blur(18px);}
+.auth-header{margin-bottom:1.65rem;}
+.auth-header h1{font-family:'Outfit',sans-serif;font-size:clamp(1.7rem,2.4vw,2.1rem);font-weight:600;letter-spacing:-.04em;color:#121923;}
+.auth-header p{margin-top:.4rem;color:#68717c;font-size:.82rem;line-height:1.55;}
+.auth-mobile-brand{display:none;}
+.auth-brand-panel{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;min-width:0;padding:48px;overflow:hidden;color:#f5ffff;text-align:center;background:radial-gradient(ellipse at 50% 32%,rgba(25,177,163,.25),transparent 46%),linear-gradient(145deg,#073944,#07505a 50%,#062f3b);}
+.auth-brand-panel:before,.auth-brand-panel:after{position:absolute;content:"";width:420px;height:420px;border:1px solid rgba(142,239,221,.12);border-radius:50%;pointer-events:none;}
+.auth-brand-panel:before{top:-230px;right:-170px;}
+.auth-brand-panel:after{bottom:-300px;left:-180px;width:560px;height:560px;}
+.auth-brand-mark{position:relative;z-index:1;display:grid;width:220px;height:220px;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(221,255,249,.08);box-shadow:0 22px 70px rgba(0,0,0,.2),inset 0 0 40px rgba(123,255,231,.08);}
+.auth-brand-mark img{display:block;width:76%;height:76%;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(0,0,0,.16));}
+.auth-brand-copy{position:relative;z-index:1;max-width:480px;}
+.auth-brand-copy strong{display:block;font:800 clamp(2.4rem,4.4vw,4.4rem)/1 'Outfit',sans-serif;letter-spacing:.08em;color:#f4ffff;}
+.auth-brand-copy span{display:block;margin-top:12px;color:#b8d5d8;font-size:.76rem;font-weight:700;letter-spacing:.16em;}
+.auth-brand-copy p{margin-top:22px;color:#d9eeed;font-size:1rem;line-height:1.7;}
 .brand-logo-sidebar{display:block;width:102px;height:68px;object-fit:contain;padding:2px;background:#fff;border-radius:9px;flex-shrink:0;}
-@media(max-height:700px){.brand-logo-auth{height:112px;width:min(168px,70%);margin-bottom:.45rem;}.auth-header{margin-bottom:1rem;}.auth-wrap{padding:1rem;}}
-.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:2rem;box-shadow:0 24px 80px var(--shadow);}
-.auth-tabs{display:flex;gap:3px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:1.5rem;}
-.auth-tab{flex:1;text-align:center;padding:0.55rem;border-radius:9px;cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--text2);transition:all 0.2s;}
-.auth-tab.active{background:var(--accent);color:white;}
+.auth-card{background:transparent;border:0;border-radius:0;padding:0;box-shadow:none;}
+.auth-tabs{display:flex;gap:22px;border-bottom:1px solid #dfe9e8;margin:0 0 1.3rem;}
+.auth-tab{padding:0 0 11px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;color:#7a838d;font-size:.84rem;font-weight:600;cursor:pointer;}
+.auth-tab.active{border-color:#078d88;color:#087e7b;}
 .field{margin-bottom:1rem;}
-.field label{font-size:0.7rem;font-weight:700;color:var(--text2);display:block;margin-bottom:0.4rem;letter-spacing:0.08em;text-transform:uppercase;}
-.field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:0.7rem 1rem;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;outline:none;transition:all 0.2s;}
-.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,0.1);}
-.field input::placeholder{color:var(--text3);}
-.auth-btn{width:100%;background:linear-gradient(135deg,#7b74ff,#6c63ff);border:none;color:white;padding:0.8rem;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:0.3rem;}
-.auth-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(108,99,255,0.35);}
+.field label{font-size:.77rem;font-weight:600;color:#313a45;display:block;margin-bottom:.42rem;}
+.field input{width:100%;background:rgba(249,252,252,.88);border:1px solid #d9e4e3;border-radius:10px;padding:.82rem .95rem;color:#1b2b30;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;outline:none;transition:all .2s;}
+.field input:focus{border-color:#078d88;box-shadow:0 0 0 3px rgba(7,141,136,.12);}
+.field input::placeholder{color:#929ba6;}
+.auth-btn{width:100%;background:linear-gradient(110deg,#0b8d86,#08747b);border:1px solid #087c7b;color:white;padding:.78rem 1rem;border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.3rem;}
+.auth-btn:hover{background:linear-gradient(110deg,#087a75,#075f68);box-shadow:0 6px 16px rgba(7,112,113,.2);}
 .auth-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
-.auth-error{color:#ff8080;font-size:0.74rem;margin-top:0.5rem;padding:0.5rem 0.75rem;background:#ff606015;border-radius:8px;display:none;}
+.auth-error{color:#bd3434;font-size:.74rem;margin-top:.5rem;padding:.5rem .75rem;background:#fff0f0;border-radius:8px;display:none;}
+.auth-provider-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:.65rem;padding:.72rem .9rem;border:1px solid #d9e4e3;border-radius:9px;color:#27383d;background:rgba(255,255,255,.76);font:600 .8rem 'Plus Jakarta Sans',sans-serif;cursor:pointer;}
+.auth-provider-btn:hover:not(:disabled){background:#fff;border-color:#a9c5c2;}
+.auth-provider-btn:disabled{color:#7b878a;background:#f2f5f4;cursor:not-allowed;}
+.auth-provider-mark{display:grid;width:18px;height:18px;place-items:center;border-radius:50%;background:#fff;color:#162227;font-size:13px;font-weight:800;}
+.auth-provider-btn:disabled .auth-provider-mark{background:#e3e9e8;color:#657272;}
+.auth-remember-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:.2rem 0 .8rem;font-size:.7rem;}
+.auth-remember{display:inline-flex;align-items:center;gap:7px;color:#69777a;cursor:pointer;}
+.auth-remember input{width:14px;height:14px;margin:0;accent-color:#078d88;}
+.auth-forgot-link{display:block;width:max-content;margin:0 0 0 auto;padding:0;border:0;background:transparent;color:#087e7b;font-size:.7rem;cursor:pointer;}
+.auth-separator{display:flex;align-items:center;gap:12px;margin:.9rem 0;color:#9aa2ab;font-size:.7rem;}
+.auth-separator:before,.auth-separator:after{content:"";height:1px;flex:1;background:#e2e9e8;}
+#authScreen.is-forgot .auth-tabs,#authScreen.is-reset .auth-tabs{display:none;}
+@media(max-width:900px){
+  #authScreen{display:block;overflow:auto;background:radial-gradient(ellipse at 50% -5%,rgba(19,151,143,.25),transparent 45%),linear-gradient(160deg,#073944,#062e3b 65%,#082d38);}
+  .auth-form-panel{min-height:100%;padding:25px 22px 40px;background:transparent;}
+  .auth-wrap{max-width:430px;padding:24px 22px;background:rgba(247,253,252,.96);border-color:rgba(255,255,255,.8);border-radius:22px;box-shadow:0 20px 55px rgba(0,0,0,.24);}
+  .auth-brand-panel{display:none;}
+  .auth-mobile-brand{display:flex;align-items:center;flex-direction:column;margin:0 auto 18px;text-align:center;}
+  .auth-mobile-brand img{width:60px;height:60px;object-fit:contain;}
+  .auth-mobile-brand strong{margin-top:4px;color:#0b3741;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:.08em;}
+  .auth-mobile-brand span{margin-top:3px;color:#617b7d;font-size:.48rem;font-weight:700;letter-spacing:.08em;}
+  .auth-header h1{font-size:1.5rem;}
+}
+@media(max-height:760px) and (max-width:900px){.auth-form-panel{align-items:flex-start;padding-top:14px;}.auth-mobile-brand{margin-bottom:12px;}.auth-mobile-brand img{width:48px;height:48px;}.auth-header{margin-bottom:1rem;}}
 
 /* ── APP SHELL ── */
 #appScreen{display:none;flex:1;height:100vh;overflow:hidden;}
@@ -422,44 +460,63 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 
 <!-- AUTH -->
 <div id="authScreen">
-  <div class="auth-wrap">
-    <div class="auth-header">
-      <img class="brand-logo-auth" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">
+  <section class="auth-form-panel">
+    <div class="auth-wrap">
+      <div class="auth-mobile-brand">
+        <img src="/klasora-icon.png" alt="">
+        <strong>KLASORA</strong>
+        <span>YOUR CLIQUE, YOUR CIRCLE, YOUR CAMPUS</span>
+      </div>
+      <header class="auth-header">
+        <h1 id="authHeading">Welcome back</h1>
+        <p id="authSubheading">Log in to continue to your classes.</p>
+      </header>
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button class="auth-tab active" type="button" role="tab" aria-selected="true" onclick="switchTab('login')">Log in</button>
+          <button class="auth-tab" type="button" role="tab" aria-selected="false" onclick="switchTab('register')">Sign up</button>
+        </div>
+        <div id="loginForm">
+          <div class="field"><label for="lEmail">Email</label><input type="email" id="lEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+          <div class="field"><label for="lPass">Password</label><input type="password" id="lPass" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+          <div class="auth-remember-row">
+            <label class="auth-remember"><input id="rememberMe" type="checkbox"> Remember me</label>
+            <button class="auth-forgot-link" type="button" onclick="showForgotPassword()">Forgot password?</button>
+          </div>
+          <div class="auth-error" id="lErr" role="alert"></div>
+          <button class="auth-btn" id="loginBtn" onclick="doLogin()">Login</button>
+          <div class="auth-separator">or continue with</div>
+          <div class="auth-error" id="googleAuthError" role="alert"></div>
+          <button class="auth-provider-btn" type="button" onclick="signInWithGoogle()"><span class="auth-provider-mark" aria-hidden="true">G</span>Continue with Google</button>
+          <button class="auth-provider-btn" type="button" disabled title="Apple sign-in is not configured">Apple sign-in unavailable</button>
+        </div>
+        <div id="registerForm" style="display:none">
+          <div class="field"><label for="rName">Your Full Name</label><input type="text" id="rName" placeholder="e.g. Jordan Lee" autocomplete="name"></div>
+          <div class="field"><label for="rEmail">Your Email</label><input type="email" id="rEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+          <div class="field"><label for="rPass">Password</label><input type="password" id="rPass" placeholder="Min 8 characters" autocomplete="new-password"></div>
+          <div class="auth-error" id="rErr" role="alert"></div>
+          <button class="auth-btn" id="regBtn" onclick="doRegister()">Sign up</button>
+        </div>
+        <div id="forgotForm" style="display:none">
+          <div class="field"><label for="forgotEmail">Enter your Email</label><input type="email" id="forgotEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+          <div class="auth-error" id="forgotErr" role="alert"></div>
+          <div id="forgotMsg" style="display:none;color:#68717c;font-size:.78rem;line-height:1.5;margin-bottom:.8rem;"></div>
+          <button class="auth-btn" id="forgotBtn" onclick="requestPasswordReset()">Send reset link</button>
+          <button class="auth-forgot-link" type="button" onclick="switchTab('login')">Back to sign in</button>
+        </div>
+        <div id="resetForm" style="display:none">
+          <div class="field"><label for="resetPass">New Password</label><input type="password" id="resetPass" placeholder="Min 8 characters" autocomplete="new-password"></div>
+          <div class="auth-error" id="resetErr" role="alert"></div>
+          <button class="auth-btn" id="resetBtn" onclick="updatePassword()">Update password</button>
+          <button class="auth-forgot-link" type="button" onclick="switchTab('login')">Back to login</button>
+        </div>
+      </div>
     </div>
-    <div class="auth-card">
-      <div class="auth-tabs">
-        <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
-        <div class="auth-tab" onclick="switchTab('register')">Join Klasora</div>
-      </div>
-      <div id="loginForm">
-        <div class="field"><label>Email</label><input type="email" id="lEmail" placeholder="student@university.edu"></div>
-        <div class="field"><label>Password</label><input type="password" id="lPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
-        <div class="auth-error" id="lErr"></div>
-        <button class="auth-btn" id="loginBtn" onclick="doLogin()">Sign In →</button>
-        <button class="auth-btn" style="margin-top:0.6rem;background:#fff;color:#222;border:1px solid #ddd" onclick="signInWithGoogle()">Continue with Google</button>
-        <button class="auth-btn" style="margin-top:0.6rem;background:transparent;color:var(--text2);border:1px solid var(--border)" onclick="showForgotPassword()">Forgot password?</button>
-      </div>
-      <div id="registerForm" style="display:none">
-        <div class="field"><label>Your Name</label><input type="text" id="rName" placeholder="e.g. Jordan Lee"></div>
-        <div class="field"><label>Email</label><input type="email" id="rEmail" placeholder="student@university.edu"></div>
-        <div class="field"><label>Password</label><input type="password" id="rPass" placeholder="Min 8 characters"></div>
-        <div class="auth-error" id="rErr"></div>
-        <button class="auth-btn" id="regBtn" onclick="doRegister()">Create Account →</button>
-      </div>
-      <div id="forgotForm" style="display:none">
-        <div class="field"><label>Email</label><input type="email" id="forgotEmail" placeholder="student@university.edu"></div>
-        <div class="auth-error" id="forgotErr"></div>
-        <div id="forgotMsg" style="display:none;color:var(--text2);font-size:0.78rem;line-height:1.5;margin-bottom:0.8rem;"></div>
-        <button class="auth-btn" id="forgotBtn" onclick="requestPasswordReset()">Send Reset Link →</button>
-        <button class="auth-btn" style="margin-top:0.6rem;background:transparent;color:var(--text2);border:1px solid var(--border)" onclick="switchTab('login')">Back to sign in</button>
-      </div>
-      <div id="resetForm" style="display:none">
-        <div class="field"><label>New Password</label><input type="password" id="resetPass" placeholder="Min 8 characters"></div>
-        <div class="auth-error" id="resetErr"></div>
-        <button class="auth-btn" id="resetBtn" onclick="updatePassword()">Update Password →</button>
-      </div>
-    </div>
-  </div>
+  </section>
+  <aside class="auth-brand-panel" aria-label="Klasora — Your clique, your circle, your campus">
+    <div class="auth-brand-mark"><img src="/klasora-icon.png" alt=""></div>
+    <div class="auth-brand-copy"><strong>KLASORA</strong><span>YOUR CLIQUE, YOUR CIRCLE, YOUR CAMPUS</span><p>A place to connect with your people, stay on top of class, and make progress together.</p></div>
+  </aside>
 </div>
 
 <!-- APP -->
@@ -468,7 +525,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <div class="sidebar">
     <div class="sidebar-top">
       <div class="sidebar-logo">
-        <img class="brand-logo-sidebar" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">
+        <img class="brand-logo-sidebar" src="/klasora-icon.png" alt="Klasora">
         <div class="top-actions">
           <button class="icon-pill" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
           <button class="icon-pill" onclick="switchTab2('settings')" title="Settings">⚙️</button>
@@ -755,7 +812,8 @@ const EMOJIS        = ['😊','😂','🔥','❤️','👍','👏','😭','🎉'
 const CLIQUE_EMOJIS = ['📚','🎮','🏀','🎵','💻','🎨','⚽','🍕','✈️','🎭','🔬','📸','🏋️','🎯','💡'];
 const SERVER_URL    = '';
 
-let socket=null, token=localStorage.getItem('meno_token')||null, myUser=JSON.parse(localStorage.getItem('meno_user')||'null');
+let authStorage=sessionStorage.getItem('meno_token')?sessionStorage:localStorage;
+let socket=null, token=authStorage.getItem('meno_token')||null, myUser=JSON.parse(authStorage.getItem('meno_user')||'null');
 let pendingAttachment=null, pendingAttachmentPreviewUrl=null;
 let mediaRecorder=null, recordingStream=null, voiceChunks=[], pendingVoiceBlob=null, voicePreviewUrl=null, discardVoiceRecording=false;
 let activeId=null, activeType=null, activeRoomId=null;
@@ -764,6 +822,18 @@ let allItems=[], sideTab='chats', chatMode='dms';
 let selCliqueEmoji=CLIQUE_EMOJIS[0];
 let typTimer=null, typingUsers={};
 let aiVisible=false;
+
+function persistAuthSession(nextToken,nextUser,remember=true){
+  authStorage=remember?localStorage:sessionStorage;
+  const otherStorage=remember?sessionStorage:localStorage;
+  otherStorage.removeItem('meno_token');
+  otherStorage.removeItem('meno_user');
+  authStorage.setItem('meno_token',nextToken);
+  authStorage.setItem('meno_user',JSON.stringify(nextUser));
+}
+function persistAuthUser(user){
+  if(token) authStorage.setItem('meno_user',JSON.stringify(user));
+}
 
 // ── POMODORO STATE ────────────────────────────────────────────
 let pomState={ mode:'focus', running:false, secs:25*60, total:25*60, interval:null, sessToday:0, sessAll:0 };
@@ -782,13 +852,13 @@ async function init() {
     try{
       const d=await api('/api/auth/sync','POST',{accessToken:oauthAccessToken});
       token=d.token; myUser=d.user;
-      localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser));
+      persistAuthSession(token,myUser);
       history.replaceState(null,'',location.pathname);
       showApp();
       return;
     }catch(e){ clearAuth(); showAuth(); document.getElementById('lErr').textContent=e.message; document.getElementById('lErr').style.display='block'; return; }
   }
-  if(token&&myUser){ try{ myUser=await api('/api/me'); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp(); }catch{ clearAuth(); showAuth(); } }
+  if(token&&myUser){ try{ myUser=await api('/api/me'); persistAuthUser(myUser); showApp(); }catch{ clearAuth(); showAuth(); } }
   else showAuth();
 }
 
@@ -804,17 +874,29 @@ async function api(path, method='GET', body=null){
 
 // ── AUTH ──────────────────────────────────────────────────────
 function switchTab(t){
-  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(t==='login'&&i===0)||(t==='register'&&i===1)));
+  document.getElementById('authScreen').classList.remove('is-forgot','is-reset');
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>{
+    const active=(t==='login'&&i===0)||(t==='register'&&i===1);
+    el.classList.toggle('active',active);
+    el.setAttribute('aria-selected',String(active));
+  });
   document.getElementById('loginForm').style.display=t==='login'?'block':'none';
   document.getElementById('registerForm').style.display=t==='register'?'block':'none';
   document.getElementById('forgotForm').style.display='none';
   document.getElementById('resetForm').style.display='none';
+  document.getElementById('authHeading').textContent=t==='register'?'Create an account':'Welcome back';
+  document.getElementById('authSubheading').textContent=t==='register'?'Join your classes and campus community.':'Log in to continue to your classes.';
 }
 function showForgotPassword(){
+  document.getElementById('authScreen').classList.add('is-forgot');
   document.getElementById('loginForm').style.display='none';
   document.getElementById('registerForm').style.display='none';
   document.getElementById('forgotForm').style.display='block';
-  document.querySelectorAll('.auth-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.auth-tab').forEach(el=>{el.classList.remove('active');el.setAttribute('aria-selected','false');});
+  const loginEmail=document.getElementById('lEmail').value.trim();
+  if(loginEmail&&!document.getElementById('forgotEmail').value)document.getElementById('forgotEmail').value=loginEmail;
+  document.getElementById('authHeading').textContent='Welcome back';
+  document.getElementById('authSubheading').textContent="Enter the email you signed up with and we'll send you a link to reset it.";
 }
 async function requestPasswordReset(){
   const email=document.getElementById('forgotEmail').value.trim(), err=document.getElementById('forgotErr'), msg=document.getElementById('forgotMsg'), btn=document.getElementById('forgotBtn');
@@ -824,14 +906,17 @@ async function requestPasswordReset(){
     const d=await api('/api/auth/forgot-password','POST',{email});
     msg.textContent=d.message; msg.style.display='block';
   }catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Send Reset Link →'; }
+  finally{ btn.disabled=false; btn.textContent='Send reset link'; }
 }
 function showResetPassword(){
+  document.getElementById('authScreen').classList.add('is-reset');
   document.getElementById('loginForm').style.display='none';
   document.getElementById('registerForm').style.display='none';
   document.getElementById('forgotForm').style.display='none';
   document.getElementById('resetForm').style.display='block';
-  document.querySelectorAll('.auth-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.auth-tab').forEach(el=>{el.classList.remove('active');el.setAttribute('aria-selected','false');});
+  document.getElementById('authHeading').textContent='Set a new password';
+  document.getElementById('authSubheading').textContent='Choose a new password for your Klasora account.';
 }
 async function updatePassword(){
   const password=document.getElementById('resetPass').value, err=document.getElementById('resetErr'), btn=document.getElementById('resetBtn');
@@ -847,25 +932,34 @@ async function updatePassword(){
     document.getElementById('lErr').textContent='Password updated. Sign in with your new password.';
     document.getElementById('lErr').style.display='block';
   }catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Update Password →'; }
+  finally{ btn.disabled=false; btn.textContent='Update password'; }
 }
 async function doLogin(){
   const email=document.getElementById('lEmail').value.trim(), password=document.getElementById('lPass').value;
   const err=document.getElementById('lErr'), btn=document.getElementById('loginBtn');
   err.style.display='none'; btn.disabled=true; btn.textContent='Signing in…';
-  try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp(); }
+  try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; persistAuthSession(token,myUser,document.getElementById('rememberMe').checked); showApp(); }
   catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Sign In →'; }
+  finally{ btn.disabled=false; btn.textContent='Login'; }
 }
 async function signInWithGoogle(){
-  const err=document.getElementById('lErr');
-  err.style.display='none';
+  const btn=document.querySelector('[onclick="signInWithGoogle()"]');
+  const error=document.getElementById('googleAuthError');
+  error.style.display='none';
+  btn.disabled=true;
+  btn.lastChild.textContent='Connecting to Google…';
   try{
     const res=await fetch('/api/auth/google');
     const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Google sign-in is unavailable');
+    if(!res.ok) throw new Error(data.error||'Google sign-in could not be started. Please try again.');
+    if(!data.url) throw new Error('Google sign-in could not be started. Please try again.');
     location.href=data.url;
-  }catch(e){ err.textContent=e.message; err.style.display='block'; }
+  }catch(e){
+    error.textContent=e.message;
+    error.style.display='block';
+    btn.lastChild.textContent='Continue with Google';
+    btn.disabled=false;
+  }
 }
 async function doRegister(){
   const name=document.getElementById('rName').value.trim(), email=document.getElementById('rEmail').value.trim(), password=document.getElementById('rPass').value;
@@ -880,14 +974,18 @@ async function doRegister(){
     if(d.needsVerification){
       err.textContent=d.message; err.style.display='block'; return;
     }
-    token=d.token; myUser=d.user; localStorage.setItem('meno_token',token); localStorage.setItem('meno_user',JSON.stringify(myUser)); showApp();
+    token=d.token; myUser=d.user; persistAuthSession(token,myUser); showApp();
   }
   catch(e){ err.textContent=e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent='Create Account →'; }
+  finally{ btn.disabled=false; btn.textContent='Sign up'; }
 }
-function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); }
-function doLogout(){ if(socket)socket.disconnect(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
-function showAuth(){ document.getElementById('authScreen').style.display='flex'; document.getElementById('appScreen').classList.remove('show'); }
+function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); sessionStorage.removeItem('meno_token'); sessionStorage.removeItem('meno_user'); }
+function doLogout(){ if(socket)socket.disconnect(); window.KlasoraRefresh?.close(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
+function showAuth(){
+  document.getElementById('authScreen').style.display='';
+  document.getElementById('appScreen').classList.remove('show');
+  if(token) document.getElementById('rememberMe').checked=authStorage===localStorage;
+}
 
 // ── THEME ─────────────────────────────────────────────────────
 function applyTheme(t){
@@ -910,6 +1008,25 @@ function showApp(){
   renderMyProfile(); buildEp(); buildCliqueEmojiGrid();
   connectSocket(); loadList();
   setupPushNotifications();
+  window.KlasoraBridge={
+    api,
+    get user(){return myUser;},
+    get cliques(){return allItems.filter(item=>item._chatType==='clique');},
+    openModal,
+    editProfile,
+    switchTab2,
+    setChatMode,
+    openChat,
+    toggleTheme,
+    updateProfile:async changes=>{
+      myUser=await api('/api/me/profile','PATCH',changes);
+      persistAuthUser(myUser);
+      renderMyProfile();
+      return myUser;
+    },
+    refreshAssignments:()=>window.KlasoraRefresh?.renderAssignments()
+  };
+  window.KlasoraRefresh?.open();
   if(localStorage.getItem('meno_intro_seen')!=='1') setTimeout(showIntro,450);
 }
 const INTRO_STEPS=[
@@ -923,7 +1040,7 @@ function showIntro(){introStep=0;renderIntro();document.getElementById('introOve
 function renderIntro(){
   const step=INTRO_STEPS[introStep];
   const art=document.getElementById('introArt');
-  if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">';
+  if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-wordmark.png" alt="Klasora">';
   else art.textContent=step.art;
   document.getElementById('introKicker').textContent=step.kicker;
   document.getElementById('introTitle').textContent=step.title;
@@ -1035,7 +1152,7 @@ function editProfile(){
   if(bio===null)return;
   api('/api/me/profile','PATCH',{name,bio}).then(user=>{
     myUser=user;
-    localStorage.setItem('meno_user',JSON.stringify(user));
+    persistAuthUser(user);
     renderMyProfile();
     switchTab2('settings');
     showToast('✅','Profile updated','Your profile changes are saved');
@@ -1458,7 +1575,7 @@ async function loadHomework(){
 async function addHomework(){
   const title=document.getElementById('hwTitle').value.trim(); const err=document.getElementById('hwErr'); err.style.display='none';
   if(!title){err.textContent='Title required';err.style.display='block';return;}
-  try{ await api('/api/homework','POST',{title,subject:document.getElementById('hwSubject').value.trim(),courseId:document.getElementById('hwCourse').value||null,dueDate:document.getElementById('hwDue').value||null,priority:document.getElementById('hwPriority').value,notes:document.getElementById('hwNotes').value.trim()}); closeModal('hwModal'); ['hwTitle','hwSubject','hwDue','hwNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hwCourse').value=''; if(sideTab==='homework')loadHomework(); }
+  try{ await api('/api/homework','POST',{title,subject:document.getElementById('hwSubject').value.trim(),courseId:document.getElementById('hwCourse').value||null,dueDate:document.getElementById('hwDue').value||null,priority:document.getElementById('hwPriority').value,notes:document.getElementById('hwNotes').value.trim()}); closeModal('hwModal'); ['hwTitle','hwSubject','hwDue','hwNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hwCourse').value=''; if(sideTab==='homework')loadHomework(); window.KlasoraBridge?.refreshAssignments(); }
   catch(e){err.textContent=e.message;err.style.display='block';}
 }
 async function toggleHW(id,done){ await api(`/api/homework/${id}`,'PATCH',{done}); if(sideTab==='homework')loadHomework(); }
