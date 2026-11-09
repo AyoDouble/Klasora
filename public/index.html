@@ -486,8 +486,8 @@ video{border-radius:16px;background:#000;object-fit:cover;}
           <div class="auth-error" id="lErr" role="alert"></div>
           <button class="auth-btn" id="loginBtn" onclick="doLogin()">Login</button>
           <div class="auth-separator">or continue with</div>
-          <button class="auth-provider-btn" type="button" onclick="signInWithGoogle()"><span class="auth-provider-mark" aria-hidden="true">G</span>Sign in with Google</button>
-          <div class="google-config-note" id="googleConfigNotice" role="status" aria-live="polite">Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.</div>
+          <div class="auth-error" id="googleAuthError" role="alert"></div>
+          <button class="auth-provider-btn" type="button" onclick="signInWithGoogle()"><span class="auth-provider-mark" aria-hidden="true">G</span>Continue with Google</button>
           <button class="auth-provider-btn" type="button" disabled title="Apple sign-in is not configured">Apple sign-in unavailable</button>
         </div>
         <div id="registerForm" style="display:none">
@@ -943,14 +943,23 @@ async function doLogin(){
   finally{ btn.disabled=false; btn.textContent='Login'; }
 }
 async function signInWithGoogle(){
-  const notice=document.getElementById('googleConfigNotice');
-  notice.style.display='none';
+  const btn=document.querySelector('[onclick="signInWithGoogle()"]');
+  const error=document.getElementById('googleAuthError');
+  error.style.display='none';
+  btn.disabled=true;
+  btn.lastChild.textContent='Connecting to Google…';
   try{
     const res=await fetch('/api/auth/google');
     const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.');
+    if(!res.ok) throw new Error(data.error||'Google sign-in could not be started. Please try again.');
+    if(!data.url) throw new Error('Google sign-in could not be started. Please try again.');
     location.href=data.url;
-  }catch(e){ notice.textContent=e.message; notice.style.display='block'; }
+  }catch(e){
+    error.textContent=e.message;
+    error.style.display='block';
+    btn.lastChild.textContent='Continue with Google';
+    btn.disabled=false;
+  }
 }
 async function doRegister(){
   const name=document.getElementById('rName').value.trim(), email=document.getElementById('rEmail').value.trim(), password=document.getElementById('rPass').value;

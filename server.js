@@ -380,7 +380,7 @@ app.get('/api/auth/google', async (req, res) => {
     res.json({ url: data.url });
   } catch (e) {
     console.error('Google sign-in request failed:', e);
-    res.status(500).json({ error: 'Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.' });
+    res.status(500).json({ error: e.message || 'Google sign-in could not be started. Please try again.' });
   }
 });
 
