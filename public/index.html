@@ -939,10 +939,7 @@ async function doLogin(){
   const err=document.getElementById('lErr'), btn=document.getElementById('loginBtn');
   err.style.display='none'; btn.disabled=true; btn.textContent='Signing in…';
   try{ const d=await api('/api/login','POST',{email,password}); token=d.token; myUser=d.user; persistAuthSession(token,myUser,document.getElementById('rememberMe').checked); showApp(); }
-  catch(e){
-    err.textContent=e.message.trim().toLowerCase()==='invalid login credentials'?'Wrong Username or Password':e.message;
-    err.style.display='block';
-  }
+  catch(e){ err.textContent=e.message; err.style.display='block'; }
   finally{ btn.disabled=false; btn.textContent='Login'; }
 }
 async function signInWithGoogle(){
