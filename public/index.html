@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klasora — Your Clique Awaits</title>
-<link rel="icon" type="image/png" href="/klasora-logo.png">
-<link rel="apple-touch-icon" href="/klasora-logo.png">
+<link rel="icon" type="image/png" href="/klasora-icon.png">
+<link rel="apple-touch-icon" href="/klasora-icon.png">
 <link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/ui-refresh.css">
 <script src="/socket.io/socket.io.js"></script>
+<script src="/ui-refresh.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
 
@@ -424,7 +426,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 <div id="authScreen">
   <div class="auth-wrap">
     <div class="auth-header">
-      <img class="brand-logo-auth" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">
+      <img class="brand-logo-auth" src="/klasora-wordmark-tagline.png" alt="Klasora — Your clique, your circle, your campus">
     </div>
     <div class="auth-card">
       <div class="auth-tabs">
@@ -437,6 +439,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
         <div class="auth-error" id="lErr"></div>
         <button class="auth-btn" id="loginBtn" onclick="doLogin()">Sign In →</button>
         <button class="auth-btn" style="margin-top:0.6rem;background:#fff;color:#222;border:1px solid #ddd" onclick="signInWithGoogle()">Continue with Google</button>
+        <div class="google-config-note" id="googleConfigNotice" role="status" aria-live="polite">Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.</div>
         <button class="auth-btn" style="margin-top:0.6rem;background:transparent;color:var(--text2);border:1px solid var(--border)" onclick="showForgotPassword()">Forgot password?</button>
       </div>
       <div id="registerForm" style="display:none">
@@ -468,7 +471,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <div class="sidebar">
     <div class="sidebar-top">
       <div class="sidebar-logo">
-        <img class="brand-logo-sidebar" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">
+        <img class="brand-logo-sidebar" src="/klasora-icon.png" alt="Klasora">
         <div class="top-actions">
           <button class="icon-pill" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
           <button class="icon-pill" onclick="switchTab2('settings')" title="Settings">⚙️</button>
@@ -858,14 +861,14 @@ async function doLogin(){
   finally{ btn.disabled=false; btn.textContent='Sign In →'; }
 }
 async function signInWithGoogle(){
-  const err=document.getElementById('lErr');
-  err.style.display='none';
+  const notice=document.getElementById('googleConfigNotice');
+  notice.style.display='none';
   try{
     const res=await fetch('/api/auth/google');
     const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Google sign-in is unavailable');
+    if(!res.ok) throw new Error(data.error||'Google sign-in is not configured yet. Enable it in Supabase Authentication → Providers → Google.');
     location.href=data.url;
-  }catch(e){ err.textContent=e.message; err.style.display='block'; }
+  }catch(e){ notice.textContent=e.message; notice.style.display='block'; }
 }
 async function doRegister(){
   const name=document.getElementById('rName').value.trim(), email=document.getElementById('rEmail').value.trim(), password=document.getElementById('rPass').value;
@@ -886,7 +889,7 @@ async function doRegister(){
   finally{ btn.disabled=false; btn.textContent='Create Account →'; }
 }
 function clearAuth(){ token=null; myUser=null; localStorage.removeItem('meno_token'); localStorage.removeItem('meno_user'); }
-function doLogout(){ if(socket)socket.disconnect(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
+function doLogout(){ if(socket)socket.disconnect(); window.KlasoraRefresh?.close(); clearAuth(); document.getElementById('appScreen').classList.remove('show'); showAuth(); }
 function showAuth(){ document.getElementById('authScreen').style.display='flex'; document.getElementById('appScreen').classList.remove('show'); }
 
 // ── THEME ─────────────────────────────────────────────────────
@@ -910,6 +913,25 @@ function showApp(){
   renderMyProfile(); buildEp(); buildCliqueEmojiGrid();
   connectSocket(); loadList();
   setupPushNotifications();
+  window.KlasoraBridge={
+    api,
+    get user(){return myUser;},
+    get cliques(){return allItems.filter(item=>item._chatType==='clique');},
+    openModal,
+    editProfile,
+    switchTab2,
+    setChatMode,
+    openChat,
+    toggleTheme,
+    updateProfile:async changes=>{
+      myUser=await api('/api/me/profile','PATCH',changes);
+      localStorage.setItem('meno_user',JSON.stringify(myUser));
+      renderMyProfile();
+      return myUser;
+    },
+    refreshAssignments:()=>window.KlasoraRefresh?.renderAssignments()
+  };
+  window.KlasoraRefresh?.open();
   if(localStorage.getItem('meno_intro_seen')!=='1') setTimeout(showIntro,450);
 }
 const INTRO_STEPS=[
@@ -923,7 +945,7 @@ function showIntro(){introStep=0;renderIntro();document.getElementById('introOve
 function renderIntro(){
   const step=INTRO_STEPS[introStep];
   const art=document.getElementById('introArt');
-  if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-logo.png" alt="Klasora — Your clique, your circle, your campus">';
+  if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-wordmark.png" alt="Klasora">';
   else art.textContent=step.art;
   document.getElementById('introKicker').textContent=step.kicker;
   document.getElementById('introTitle').textContent=step.title;
@@ -1458,7 +1480,7 @@ async function loadHomework(){
 async function addHomework(){
   const title=document.getElementById('hwTitle').value.trim(); const err=document.getElementById('hwErr'); err.style.display='none';
   if(!title){err.textContent='Title required';err.style.display='block';return;}
-  try{ await api('/api/homework','POST',{title,subject:document.getElementById('hwSubject').value.trim(),courseId:document.getElementById('hwCourse').value||null,dueDate:document.getElementById('hwDue').value||null,priority:document.getElementById('hwPriority').value,notes:document.getElementById('hwNotes').value.trim()}); closeModal('hwModal'); ['hwTitle','hwSubject','hwDue','hwNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hwCourse').value=''; if(sideTab==='homework')loadHomework(); }
+  try{ await api('/api/homework','POST',{title,subject:document.getElementById('hwSubject').value.trim(),courseId:document.getElementById('hwCourse').value||null,dueDate:document.getElementById('hwDue').value||null,priority:document.getElementById('hwPriority').value,notes:document.getElementById('hwNotes').value.trim()}); closeModal('hwModal'); ['hwTitle','hwSubject','hwDue','hwNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hwCourse').value=''; if(sideTab==='homework')loadHomework(); window.KlasoraBridge?.refreshAssignments(); }
   catch(e){err.textContent=e.message;err.style.display='block';}
 }
 async function toggleHW(id,done){ await api(`/api/homework/${id}`,'PATCH',{done}); if(sideTab==='homework')loadHomework(); }

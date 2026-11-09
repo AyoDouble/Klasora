@@ -341,11 +341,24 @@ app.post('/api/login', async (req, res) => {
     });
     let user = data.user ? await User.findById(data.user.id) : null;
     if (!user && supabase) {
-      const legacyUser = await User.findOne({ email: email.trim().toLowerCase() });
-      if (legacyUser?.password && await bcrypt.compare(password, legacyUser.password)) user = legacyUser;
+      const emailUser = await User.findOne({ email: email.trim().toLowerCase() });
+      if (data.user && emailUser) {
+        user = emailUser;
+      } else if (data.user?.email) {
+        const metadata = data.user.user_metadata || {};
+        const displayName = metadata.name || metadata.full_name || data.user.email.split('@')[0];
+        user = await User.create({
+          id: data.user.id,
+          name: displayName.trim().length >= 2 ? displayName.trim().slice(0, 80) : 'Student',
+          email: data.user.email.toLowerCase(),
+          color: metadata.color || '#6c63ff'
+        });
+      } else if (emailUser?.password && await bcrypt.compare(password, emailUser.password)) {
+        user = emailUser;
+      }
     }
     if (!user) {
-      return res.status(400).json({ error: data.user ? 'Your profile is incomplete. Contact support.' : (error?.message || 'Incorrect email or password') });
+      return res.status(400).json({ error: error?.message || 'Incorrect email or password' });
     }
     res.json({ token: signToken(user), user: safeUser(user) });
   } catch (e) {

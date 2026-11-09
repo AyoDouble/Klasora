@@ -98,30 +98,45 @@ The schema creates private `course-files` and `chat-files` Storage buckets. Cour
    `APP_URL` and test both flows from the login screen.
 
 ### 4. Set up environment variables
+On Windows PowerShell, copy the template with:
+```powershell
+Copy-Item .env.example .env
+```
+On macOS or Linux, use `cp .env.example .env`.
+
+Open `.env` and replace the example values with credentials from your Supabase project's
+**Project Settings → API**. Keep the service-role key private and never commit `.env`.
+Generate a new JWT secret locally with Node.js:
+```powershell
+node -p "require('node:crypto').randomBytes(48).toString('base64url')"
+```
+Copy the printed value into `JWT_SECRET` in `.env`. Generate your own value; it must
+contain at least 32 characters. The placeholder in `.env.example` is not a usable secret.
+
+The application requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
+`SUPABASE_SERVICE_ROLE_KEY` for sign-in and database-backed features. Replace all three
+Supabase placeholders before starting the app; the service-role key must remain server-side.
+
+The following variables are required:
 ```bash
-cp .env.example .env
-```
-
-Open `.env` and fill in your values:
-
-```env
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_ANON_KEY=your_supabase_anon_key
 APP_URL=http://localhost:3000
-JWT_SECRET=your_random_secret_here
+JWT_SECRET=replace_with_your_generated_secret
 PORT=3000
-
-# Optional - for AI assistant
-GROQ_API_KEY=your_groq_api_key
-# Optional model override
-# GROQ_MODEL=openai/gpt-oss-20b
-
-# Optional - for push notifications
-VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_PRIVATE_KEY=your_vapid_private_key
-VAPID_EMAIL=mailto:you@example.com
 ```
+
+Optional integrations such as Groq AI and push notifications are listed in `.env.example`.
+Push notifications need a matching `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` pair.
+To generate one with the installed `web-push` dependency, run this command in the project
+directory and copy its output directly into your local `.env`:
+```powershell
+node -e "console.log(JSON.stringify(require('web-push').generateVAPIDKeys()))"
+```
+Keep the private key secret; do not paste it into chat or commit it. If you do not need
+push notifications locally, leave both VAPID key values empty. Do not leave placeholder
+or partial values: the server validates a provided pair when it starts.
 
 ### 5. Run locally
 ```bash
@@ -172,7 +187,7 @@ existing Klasora users by email from the course management flow.
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side key for database access |
 | `SUPABASE_ANON_KEY` | Yes | Public anon key for browser/client access |
 | `APP_URL` | Yes | URL used for verification and password reset links |
-| `JWT_SECRET` | Yes | Any long random string for token signing |
+| `JWT_SECRET` | Yes | Private cryptographically random secret, at least 32 characters |
 | `PORT` | No | Server port (default: 3000) |
 | `GROQ_API_KEY` | No | Groq API key for AI assistant |
 | `GROQ_MODEL` | No | Optional Groq model name |
@@ -181,10 +196,14 @@ existing Klasora users by email from the course management flow.
 | `VAPID_EMAIL` | No | For push notifications |
 
 ## Responsive design
-
 Klasora works on all screen sizes:
 - **Mobile**: Bottom navigation, full-screen chat, and slide-in sidebar
 - **Tablet / Desktop**: Full sidebar layout with chat panel
+
+## Campus workspace
+The responsive campus workspace adds a community feed, clique overview and study-room preview, study capsule and focus challenge, weekly timetable, academic profile, and assignment detail screens. Existing sign-in, password recovery, chat, course, assignment, and focus-stat APIs remain in use.
+
+Community posts and comments, timetable entries, and the study-room timer are local browser experiences because the current backend does not provide services for those features. Profile changes, assignments, clique creation, and completed focus sessions use the existing authenticated APIs. Live study presence, academic program/year records, and shared community posts are not currently synchronized.
 
 ## Contributing
 
