@@ -9,6 +9,23 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-that-is-at-least-32-characters-long';
 let child;
 
+test('exports the Express app as the Vercel handler', () => {
+  const originalJwtSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = jwtSecret;
+  let exportedApp;
+  try {
+    exportedApp = require('../server');
+  } finally {
+    if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalJwtSecret;
+  }
+
+  assert.equal(typeof exportedApp, 'function');
+  assert.equal(exportedApp, exportedApp.app);
+  assert.equal(typeof exportedApp.listen, 'function');
+  assert.equal(typeof exportedApp.server.listen, 'function');
+});
+
 async function request(route, options = {}) {
   return fetch(`${baseUrl}${route}`, options);
 }

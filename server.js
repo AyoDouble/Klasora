@@ -1445,4 +1445,6 @@ if (require.main === module) {
   server.listen(PORT, () => console.log(`🚀 Klasora v2 running on http://localhost:${PORT}`));
 }
 
-module.exports = { app, server };
+module.exports = app;
+module.exports.app = app;
+module.exports.server = server;
