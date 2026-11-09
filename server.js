@@ -358,7 +358,10 @@ app.post('/api/login', async (req, res) => {
       }
     }
     if (!user) {
-      return res.status(400).json({ error: error?.message || 'Incorrect email or password' });
+      const authMessage = error?.message?.trim().toLowerCase() === 'invalid login credentials'
+        ? 'Wrong Username or Password'
+        : (error?.message || 'Incorrect email or password');
+      return res.status(400).json({ error: authMessage });
     }
     res.json({ token: signToken(user), user: safeUser(user) });
   } catch (e) {
