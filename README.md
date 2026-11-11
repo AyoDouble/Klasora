@@ -166,9 +166,11 @@ Open your browser and go to **http://localhost:3000**.
 
 ## Deploy to Vercel
 
-Vercel detects the Express app in `server.js` and serves it as a Function. In the Vercel
-project, keep the repository root as the **Root Directory** and use the **Express**
-framework preset (or automatic detection). Add the required server-side variables under
+Vercel detects the Express app exported from the root `server.js` and serves it as a
+Function; no `vercel.json` rewrite is needed. Files in `public/` are served by Vercel's
+static asset CDN. In the Vercel project, keep the repository root as the **Root
+Directory** and use the **Express** framework preset (or automatic detection). Add the
+required server-side variables under
 **Settings → Environment Variables** for each environment you deploy:
 
 - `SUPABASE_URL`
