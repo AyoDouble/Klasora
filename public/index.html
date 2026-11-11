@@ -1108,6 +1108,10 @@ function renderMyProfile(){
 
 // ── SOCKET ────────────────────────────────────────────────────
 function connectSocket(){
+  if(typeof io!=='function'){
+    showToast('⚠️','Live chat unavailable','Realtime chat is not supported on this deployment.');
+    return;
+  }
   if(socket) socket.disconnect();
   socket=io(SERVER_URL,{auth:{token}});
   socket.on('new_message', msg=>{

@@ -1,7 +1,9 @@
 const assert = require('node:assert/strict');
 const { test, before, after } = require('node:test');
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const jwt = require('jsonwebtoken');
 
 const port = 3100 + Math.floor(Math.random() * 300);
@@ -24,6 +26,57 @@ test('exports the Express app as the Vercel handler', () => {
   assert.equal(exportedApp, exportedApp.app);
   assert.equal(typeof exportedApp.listen, 'function');
   assert.equal(typeof exportedApp.server.listen, 'function');
+});
+
+test('keeps post-login startup working when the Socket.IO client is unavailable', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const socketFunction = html.match(/function connectSocket\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  const appFunction = html.match(/function showApp\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(socketFunction, 'connectSocket must remain available in the application shell');
+  assert.ok(appFunction, 'showApp must remain available in the application shell');
+
+  const notices = [];
+  const visibleClasses = new Set();
+  let refreshedShellOpened = false;
+  const context = {
+    window: { KlasoraRefresh: { open: () => { refreshedShellOpened = true; } } },
+    document: {
+      getElementById(id) {
+        return id === 'authScreen'
+          ? { style: {} }
+          : { classList: { add: className => visibleClasses.add(className) } };
+      }
+    },
+    localStorage: { getItem: () => '1' },
+    myUser: { _id: 'test-user', name: 'Test User', email: 'test@example.com', theme: 'dark' },
+    socket: null,
+    showToast: (...notice) => notices.push(notice),
+    applyTheme() {},
+    renderMyProfile() {},
+    buildEp() {},
+    buildCliqueEmojiGrid() {},
+    loadList() {},
+    setupPushNotifications() {},
+    api() {},
+    openModal() {},
+    editProfile() {},
+    switchTab2() {},
+    setChatMode() {},
+    openChat() {},
+    renderWorkspaceDetails() {},
+    toggleTheme() {},
+    updateNotificationPreference() {},
+    doLogout() {},
+    persistAuthUser() {}
+  };
+
+  assert.doesNotThrow(() => vm.runInNewContext(`${socketFunction}\n${appFunction}\nshowApp();`, context));
+  assert.equal(visibleClasses.has('show'), true);
+  assert.equal(context.socket, null);
+  assert.ok(context.window.KlasoraBridge);
+  assert.equal(refreshedShellOpened, true);
+  assert.equal(notices.length, 1);
+  assert.match(notices[0][1], /Live chat unavailable/);
 });
 
 async function request(route, options = {}) {
