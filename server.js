@@ -10,6 +10,7 @@ const cors       = require('cors');
 const path       = require('path');
 const multer     = require('multer');
 const webpush    = require('web-push');
+const { getAuthRedirectUrl } = require('./auth-redirect');
 
 const app    = express();
 const server = http.createServer(app);
@@ -350,7 +351,7 @@ app.post('/api/register', async (req, res) => {
       password,
       options: {
         data: { name: name.trim(), color: color || '#087e7b' },
-        emailRedirectTo: process.env.APP_URL || 'http://localhost:3000'
+        emailRedirectTo: getAuthRedirectUrl(req)
       }
     });
     if (error) throw error;
@@ -418,7 +419,7 @@ app.get('/api/auth/google', async (req, res) => {
     const { data, error } = await supabaseAuth.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: process.env.APP_URL || 'http://localhost:3000'
+        redirectTo: getAuthRedirectUrl(req)
       }
     });
     if (error || !data?.url) throw error || new Error('Google sign-in is not configured in Supabase');
@@ -463,7 +464,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!email || !emailPattern.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
     if (!supabaseAuth) throw new Error('Supabase Auth is not configured');
     const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.APP_URL || 'http://localhost:3000'}?reset=1`
+      redirectTo: getAuthRedirectUrl(req, '/?reset=1')
     });
     if (error) throw error;
     res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
@@ -471,7 +472,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     console.error('Password reset request failed:', e);
     const message = String(e?.message || '');
     if (/redirect|url|email/i.test(message)) {
-      return res.status(400).json({ error: 'Supabase rejected the reset link URL. Add http://localhost:3000 under Authentication → URL Configuration → Redirect URLs, then restart the server.' });
+      return res.status(400).json({ error: 'Supabase rejected the reset link URL. Check Authentication → URL Configuration and allow the deployed app origin in Redirect URLs.' });
     }
     if (/rate limit|smtp|email/i.test(message)) {
       return res.status(502).json({ error: 'Supabase could not send the reset email. Check the Auth email provider and try again later.' });

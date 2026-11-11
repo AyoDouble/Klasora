@@ -84,21 +84,26 @@ npm install
 
 The schema creates private `course-files`, `chat-files`, and `profile-images` Storage buckets. Course documents, chat attachments, voice notes, and compressed profile pictures are uploaded through the authenticated server and are not stored on the application filesystem.
 For an existing project, rerun `supabase/schema.sql` to add clique visibility, join-request, and pinned-message storage. Existing cliques default to private so they are not exposed by public discovery. Clique creators are the admins for approvals and pins; the server also checks clique membership before allowing room access and message actions.
-4. In Supabase **Authentication → URL Configuration**, set the Site URL to
-   `http://localhost:3000` while developing. Add `http://localhost:3000/**` to the
-   Redirect URLs list, then add the production URL and its callback path before deployment.
+4. In Supabase **Authentication → URL Configuration**, set the Site URL to your
+   production URL, `https://klasora.vercel.app`. Add `https://klasora.vercel.app/**`
+   and `http://localhost:3000/**` to Redirect URLs. For Vercel previews, add an exact
+   preview URL or a team-scoped pattern such as
+   `https://*-YOUR_TEAM_SLUG.vercel.app/**`; avoid a wildcard covering every Vercel
+   project. Keep the local URL only for local development.
 5. To enable Google sign-in:
    - In Google Cloud Console, create an OAuth Web application.
-   - Add `http://localhost:3000` under Authorized JavaScript origins.
+   - Add `https://klasora.vercel.app` under Authorized JavaScript origins, and
+     `http://localhost:3000` only for local development.
    - Add `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback` under Authorized redirect URIs.
    - In Supabase **Authentication → Providers → Google**, enable Google and paste the
      Google client ID and client secret.
    - Restart Klasora and use **Continue with Google**. Supabase returns the provider session
-     to `APP_URL`, where Klasora exchanges it for its protected application session.
+     to the trusted app origin, where Klasora exchanges it for its protected application session.
 6. For registration verification and password reset emails, configure Supabase
    **Authentication → SMTP Settings** for production. Keep the default Supabase email
-   service for local testing only, then verify the email templates link back to
-   `APP_URL` and test both flows from the login screen.
+   service for local testing only, then verify the email templates use Supabase's
+   confirmation URL (for example `{{ .ConfirmationURL }}`) rather than a hard-coded
+   localhost URL, and test both flows from the login screen.
 
 ### 4. Set up environment variables
 On Windows PowerShell, copy the template with:
@@ -178,6 +183,8 @@ required server-side variables under
 - `SUPABASE_ANON_KEY`
 - `JWT_SECRET` — a private random value of at least 32 characters
 - `APP_URL` — the production site URL, such as `https://klasora.vercel.app`
+- `PUBLIC_APP_URL` (optional) — explicitly trusted public app origin; takes precedence
+  over `APP_URL`. `SITE_URL` and `SUPABASE_SITE_URL` are also accepted as fallbacks.
 
 `JWT_SECRET` is required at startup; without it, the function fails before serving any
 request. Do not set `PORT` on Vercel. Add `GROQ_API_KEY` only if AI features are needed.
@@ -186,8 +193,22 @@ Push notifications are optional; if enabled, configure a matching
 values in source control or support messages. Redeploy after changing environment
 variables.
 
-In the Supabase Dashboard, set the Auth **Site URL** to the production URL and include
-the production URL and relevant auth callback URLs in the redirect URL allowlist.
+In Vercel, set `APP_URL=https://klasora.vercel.app` for Production and Preview
+environments (or set `PUBLIC_APP_URL` to the intended public origin). These variables
+provide an explicit redirect URL to Supabase; Supabase's Dashboard Site URL is not
+retrieved by the server at runtime. The server uses a request Origin only when it exactly
+matches a configured app origin or Vercel deployment URL. If Origin is absent, it accepts
+a Host only when its hostname matches one of those configured origins; it never trusts
+arbitrary Host or forwarded-host headers. Otherwise it falls back to the configured URL.
+In production, auth-link generation fails rather than falling back to localhost when no
+public URL is configured.
+
+In the Supabase Dashboard, set Authentication → URL Configuration → Site URL to
+`https://klasora.vercel.app`. Add `https://klasora.vercel.app/**` and, for local
+development, `http://localhost:3000/**` to Redirect URLs. Add an exact Vercel preview
+URL or a team-scoped pattern such as `https://*-YOUR_TEAM_SLUG.vercel.app/**` only if
+preview auth is needed. Ensure confirmation and password-reset email templates link
+through Supabase's `{{ .ConfirmationURL }}` instead of hard-coding localhost.
 Vercel Functions do not provide persistent WebSocket connections, so Socket.IO live
 chat/presence/call features require a separate WebSocket-capable host.
 
@@ -216,7 +237,9 @@ existing Klasora users by email from the course management flow.
 | `SUPABASE_URL` | Yes | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side key for database access |
 | `SUPABASE_ANON_KEY` | Yes | Public anon key for browser/client access |
-| `APP_URL` | Yes | URL used for verification and password reset links |
+| `APP_URL` | Production | Public application URL used for verification, OAuth, and password reset links; local default is `http://localhost:3000` |
+| `PUBLIC_APP_URL` | No | Optional explicitly trusted public origin; takes precedence over `APP_URL` |
+| `SITE_URL`, `SUPABASE_SITE_URL` | No | Optional public-origin fallback values |
 | `JWT_SECRET` | Yes | Private cryptographically random secret, at least 32 characters |
 | `PORT` | No | Server port (default: 3000) |
 | `GROQ_API_KEY` | No | Groq API key for AI assistant |

@@ -5,11 +5,76 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const jwt = require('jsonwebtoken');
+const { getAuthRedirectUrl } = require('../auth-redirect');
 
 const port = 3100 + Math.floor(Math.random() * 300);
 const baseUrl = `http://127.0.0.1:${port}`;
 const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-that-is-at-least-32-characters-long';
 let child;
+
+test('uses a matching configured request origin for production auth links', () => {
+  const req = { get: name => name === 'origin' ? 'https://klasora.vercel.app' : undefined };
+  const env = {
+    NODE_ENV: 'production',
+    APP_URL: 'https://klasora.vercel.app'
+  };
+
+  assert.equal(getAuthRedirectUrl(req, '/', env), 'https://klasora.vercel.app/');
+});
+
+test('ignores untrusted request origins and uses the configured app URL', () => {
+  const req = { headers: { origin: 'https://attacker.example' } };
+  const env = {
+    NODE_ENV: 'production',
+    APP_URL: 'https://klasora.vercel.app'
+  };
+
+  assert.equal(getAuthRedirectUrl(req, '/?reset=1', env), 'https://klasora.vercel.app/?reset=1');
+});
+
+test('accepts a configured Vercel preview origin without trusting arbitrary hosts', () => {
+  const req = { headers: { host: 'klasora-git-feature-team.vercel.app' } };
+  const env = {
+    NODE_ENV: 'production',
+    VERCEL_URL: 'klasora-git-feature-team.vercel.app'
+  };
+
+  assert.equal(getAuthRedirectUrl(req, '/', env), 'https://klasora-git-feature-team.vercel.app/');
+  assert.equal(getAuthRedirectUrl({ headers: { host: 'attacker.example' } }, '/', env), 'https://klasora-git-feature-team.vercel.app/');
+});
+
+test('uses the Vercel production URL as the fallback when no app URL is configured', () => {
+  const env = {
+    NODE_ENV: 'production',
+    VERCEL_URL: 'klasora-deployment.vercel.app',
+    VERCEL_PROJECT_PRODUCTION_URL: 'klasora.vercel.app'
+  };
+
+  assert.equal(getAuthRedirectUrl(null, '/', env), 'https://klasora.vercel.app/');
+});
+
+test('never uses a localhost app URL in production when Vercel provides its public origin', () => {
+  const env = {
+    NODE_ENV: 'production',
+    APP_URL: 'http://localhost:3000',
+    VERCEL_PROJECT_PRODUCTION_URL: 'klasora.vercel.app'
+  };
+
+  assert.equal(getAuthRedirectUrl(null, '/', env), 'https://klasora.vercel.app/');
+});
+
+test('keeps localhost defaults for development and never uses an untrusted forwarded host', () => {
+  assert.equal(getAuthRedirectUrl({
+    headers: {
+      origin: 'https://attacker.example',
+      'x-forwarded-host': 'attacker.example'
+    }
+  }, '/', { NODE_ENV: 'development' }), 'http://localhost:3000/');
+});
+
+test('rejects invalid configured app URLs', () => {
+  assert.throws(() => getAuthRedirectUrl(null, '/', { NODE_ENV: 'production', APP_URL: 'javascript:alert(1)' }), /APP_URL must be an HTTP\(S\) URL/);
+});
 
 test('exports the Express app as the Vercel handler', () => {
   const originalJwtSecret = process.env.JWT_SECRET;
