@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express    = require('express');
+require('express-async-errors');
 const http       = require('http');
 const crypto     = require('crypto');
 const { Server } = require('socket.io');
@@ -546,18 +547,22 @@ app.patch('/api/me/profile', auth, async (req, res) => {
     update[field] = req.body[field].trim();
   }
 
-  if (!supabase) return res.status(503).json({ error: 'Academic profile storage is not configured' });
+  let profileImage;
   if (req.body.profileImage !== undefined) {
     const match = typeof req.body.profileImage === 'string' && req.body.profileImage.match(/^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/);
     if (!match) return res.status(400).json({ error: 'Profile picture must be a compressed WebP image' });
-    const image = Buffer.from(match[1], 'base64');
-    if (!image.length || image.length > 400 * 1024 || image.toString('base64') !== match[1]) {
+    profileImage = Buffer.from(match[1], 'base64');
+    if (!profileImage.length || profileImage.length > 400 * 1024 || profileImage.toString('base64') !== match[1]) {
       return res.status(400).json({ error: 'Profile picture must be 400 KB or smaller' });
     }
+  }
+
+  if (!supabase) return res.status(503).json({ error: 'Academic profile storage is not configured' });
+  if (profileImage) {
     const profileImagePath = `${req.userId}/profile.webp`;
     let error;
     try {
-      ({ error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(profileImagePath, image, {
+      ({ error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(profileImagePath, profileImage, {
         contentType: 'image/webp',
         upsert: true
       }));
@@ -1439,6 +1444,22 @@ io.on('connection', async (socket) => {
 });
 
 // ── SERVE FRONTEND ────────────────────────────────────────────
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  console.error('Unhandled request error:', error);
+  const status = Number.isInteger(error.status) && error.status >= 400 && error.status < 500
+    ? error.status
+    : error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE'
+      ? 413
+      : 500;
+  const message = status === 413
+    ? 'The uploaded file or request body is too large.'
+    : status === 400
+      ? 'The request could not be understood. Check your input and try again.'
+      : 'Request failed. Please try again.';
+  res.status(status).json({ error: message });
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 const PORT = process.env.PORT || 3000;

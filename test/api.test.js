@@ -1,16 +1,14 @@
 const assert = require('node:assert/strict');
 const { test, before, after } = require('node:test');
-const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const jwt = require('jsonwebtoken');
 const { getAuthRedirectUrl } = require('../auth-redirect');
 
-const port = 3100 + Math.floor(Math.random() * 300);
-const baseUrl = `http://127.0.0.1:${port}`;
 const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-that-is-at-least-32-characters-long';
-let child;
+let baseUrl;
+let server;
 
 test('uses a matching configured request origin for production auth links', () => {
   const req = { get: name => name === 'origin' ? 'https://klasora.vercel.app' : undefined };
@@ -149,25 +147,32 @@ async function request(route, options = {}) {
 }
 
 before(async () => {
-  child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-    cwd: path.join(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), JWT_SECRET: jwtSecret },
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
+  const originalJwtSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = jwtSecret;
+  let app;
+  try {
+    app = require('../server');
+  } finally {
+    if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalJwtSecret;
+  }
+  server = app.server;
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Test server did not start')), 10000);
-    child.stdout.on('data', data => {
-      if (data.toString().includes(`http://localhost:${port}`)) {
-        clearTimeout(timer);
-        resolve();
-      }
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.removeListener('error', reject);
+      baseUrl = `http://127.0.0.1:${server.address().port}`;
+      resolve();
     });
-    child.once('error', reject);
-    child.stderr.on('data', data => process.stderr.write(data));
   });
 });
 
-after(() => child?.kill());
+after(async () => {
+  if (!server?.listening) return;
+  await new Promise((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+  });
+});
 
 test('serves the application shell', async () => {
   const response = await request('/');
@@ -193,6 +198,15 @@ test('rejects protected routes without a token', async () => {
   }
   const join = await request(`/api/cliques/${cliqueId}/join`, { method: 'POST' });
   assert.equal(join.status, 401);
+});
+
+test('returns a safe JSON error when an async API handler fails', async () => {
+  const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+  const response = await request('/api/me', {
+    headers: { authorization: `Bearer ${token}` }
+  });
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: 'Request failed. Please try again.' });
 });
 
 test('validates clique visibility, name, and invited members before database access', async () => {
@@ -284,17 +298,17 @@ test('requires a file for authenticated uploads', async () => {
     method: 'POST',
     headers: { authorization: `Bearer ${token}` }
   });
-
-  test('validates status updates before database access', async () => {
-    const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
-    const response = await request('/api/status', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ text: '' })
-    });
-    assert.equal(response.status, 400);
-    assert.match(await response.text(), /Status must be between 1 and 500/);
-  });
   assert.equal(response.status, 400);
   assert.match(await response.text(), /No file uploaded/);
+});
+
+test('validates status updates before database access', async () => {
+  const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+  const response = await request('/api/status', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ text: '' })
+  });
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /Status must be between 1 and 500/);
 });
