@@ -169,13 +169,17 @@ Open your browser and go to **http://localhost:3000**.
 7. Go to **Settings**, then **Domains**, then **Generate Domain**
 8. Your app is live.
 
+For a Vercel frontend with live chat, deploy this same repository as a Railway backend
+and use its HTTPS domain as `PUBLIC_BACKEND_URL` in Vercel. Set `APP_URL` on Railway
+to the Vercel frontend origin. Leave `PUBLIC_BACKEND_URL` empty on Railway.
+
 ## Deploy to Vercel
 
 Vercel detects the Express app exported from the root `server.js` and serves it as a
 Function; no `vercel.json` rewrite is needed. Files in `public/` are served by Vercel's
 static asset CDN. In the Vercel project, keep the repository root as the **Root
-Directory** and use the **Express** framework preset (or automatic detection). Add the
-required server-side variables under
+Directory** and use the **Express** framework preset (or automatic detection). For a
+single-host deployment, add the required server-side variables under
 **Settings → Environment Variables** for each environment you deploy:
 
 - `SUPABASE_URL`
@@ -183,6 +187,8 @@ required server-side variables under
 - `SUPABASE_ANON_KEY`
 - `JWT_SECRET` — a private random value of at least 32 characters
 - `APP_URL` — the production site URL, such as `https://klasora.vercel.app`
+- `PUBLIC_BACKEND_URL` — set this to the Railway backend's HTTPS origin when using
+  Railway for the API and Socket.IO; leave empty for a single-host deployment
 - `PUBLIC_APP_URL` (optional) — explicitly trusted public app origin; takes precedence
   over `APP_URL`. `SITE_URL` and `SUPABASE_SITE_URL` are also accepted as fallbacks.
 
@@ -202,6 +208,30 @@ a Host only when its hostname matches one of those configured origins; it never 
 arbitrary Host or forwarded-host headers. Otherwise it falls back to the configured URL.
 In production, auth-link generation fails rather than falling back to localhost when no
 public URL is configured.
+
+For the split Vercel/Railway deployment below, configure `JWT_SECRET` and
+`PUBLIC_BACKEND_URL` on Vercel; keep the Supabase keys and `APP_URL` on Railway.
+
+### Keep the Vercel frontend and host chat on Railway
+
+Vercel Functions cannot keep the Socket.IO connection alive. To use Vercel for the
+frontend while keeping chat, presence, calls, and API requests available:
+
+1. Deploy the repository to Railway and generate a public HTTPS domain.
+2. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `JWT_SECRET`,
+   and `APP_URL=https://klasora.vercel.app` on Railway. Use the same `JWT_SECRET` on
+   both hosts.
+3. Set `PUBLIC_BACKEND_URL` on Vercel to the Railway origin only, for example
+   `https://klasora-production.up.railway.app` (no path). Also set `JWT_SECRET` on
+   Vercel because the Express function needs it to start and serve the frontend
+   configuration.
+4. Keep Supabase service-role credentials on Railway; the Vercel frontend reads the
+   public backend origin from `/api/config` and sends authenticated API and Socket.IO
+   traffic to Railway. Redeploy both services after configuration changes.
+5. In Supabase **Authentication → URL Configuration**, keep the Vercel URL as the Site
+   URL and allow it in Redirect URLs. Confirm the email templates use
+   `{{ .ConfirmationURL }}` and verify registration and password reset from the deployed
+   frontend.
 
 In the Supabase Dashboard, set Authentication → URL Configuration → Site URL to
 `https://klasora.vercel.app`. Add `https://klasora.vercel.app/**` and, for local
@@ -238,6 +268,7 @@ existing Klasora users by email from the course management flow.
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side key for database access |
 | `SUPABASE_ANON_KEY` | Yes | Public anon key for browser/client access |
 | `APP_URL` | Production | Public application URL used for verification, OAuth, and password reset links; local default is `http://localhost:3000` |
+| `PUBLIC_BACKEND_URL` | No | Optional HTTPS origin for a separate API and Socket.IO backend; set on Vercel for a Railway backend |
 | `PUBLIC_APP_URL` | No | Optional explicitly trusted public origin; takes precedence over `APP_URL` |
 | `SITE_URL`, `SUPABASE_SITE_URL` | No | Optional public-origin fallback values |
 | `JWT_SECRET` | Yes | Private cryptographically random secret, at least 32 characters |

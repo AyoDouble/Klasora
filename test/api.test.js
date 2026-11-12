@@ -91,9 +91,9 @@ test('exports the Express app as the Vercel handler', () => {
   assert.equal(typeof exportedApp.server.listen, 'function');
 });
 
-test('keeps post-login startup working when the Socket.IO client is unavailable', () => {
+test('keeps post-login startup working when the Socket.IO client is unavailable', async () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const socketFunction = html.match(/function connectSocket\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  const socketFunction = html.match(/async function connectSocket\(\)\s*\{[\s\S]*?\n\}/)?.[0];
   const appFunction = html.match(/function showApp\(\)\s*\{[\s\S]*?\n\}/)?.[0];
   assert.ok(socketFunction, 'connectSocket must remain available in the application shell');
   assert.ok(appFunction, 'showApp must remain available in the application shell');
@@ -103,6 +103,7 @@ test('keeps post-login startup working when the Socket.IO client is unavailable'
   let refreshedShellOpened = false;
   const context = {
     window: { KlasoraRefresh: { open: () => { refreshedShellOpened = true; } } },
+    console: { error() {} },
     document: {
       getElementById(id) {
         return id === 'authScreen'
@@ -110,6 +111,7 @@ test('keeps post-login startup working when the Socket.IO client is unavailable'
           : { classList: { add: className => visibleClasses.add(className) } };
       }
     },
+    loadSocketClient: () => Promise.reject(new Error('client unavailable')),
     localStorage: { getItem: () => '1' },
     myUser: { _id: 'test-user', name: 'Test User', email: 'test@example.com', theme: 'dark' },
     socket: null,
@@ -134,6 +136,7 @@ test('keeps post-login startup working when the Socket.IO client is unavailable'
   };
 
   assert.doesNotThrow(() => vm.runInNewContext(`${socketFunction}\n${appFunction}\nshowApp();`, context));
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(visibleClasses.has('show'), true);
   assert.equal(context.socket, null);
   assert.ok(context.window.KlasoraBridge);
@@ -142,19 +145,103 @@ test('keeps post-login startup working when the Socket.IO client is unavailable'
   assert.match(notices[0][1], /Live chat unavailable/);
 });
 
+test('does not clear a message when the realtime socket is disconnected', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const sendFunction = html.match(/function sendMsg\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(sendFunction, 'sendMsg must remain available in the application shell');
+
+  const input = { value: 'Keep this message', style: {} };
+  const notices = [];
+  const context = {
+    pendingAttachment: null,
+    pendingVoiceBlob: null,
+    activeRoomId: 'test-room',
+    socket: { connected: false, emit() { assert.fail('must not emit while disconnected'); } },
+    document: { getElementById: () => input },
+    showToast: (...notice) => notices.push(notice)
+  };
+
+  vm.runInNewContext(`${sendFunction}\nsendMsg();`, context);
+  assert.equal(input.value, 'Keep this message');
+  assert.match(notices[0][1], /Live chat unavailable/);
+});
+
+test('loads the Socket.IO client from the configured backend', async () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const loaderFunction = html.match(/function loadSocketClient\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(loaderFunction, 'loadSocketClient must remain available in the application shell');
+
+  const script = {};
+  const context = {
+    io: undefined,
+    socketClientPromise: null,
+    apiUrl: path => `https://chat-api.example${path}`,
+    document: {
+      createElement: () => script,
+      head: {
+        appendChild() {
+          context.io = () => {};
+          script.onload();
+        }
+      }
+    }
+  };
+
+  await vm.runInNewContext(`${loaderFunction}\nloadSocketClient();`, context);
+  assert.equal(script.src, 'https://chat-api.example/socket.io/socket.io.js');
+});
+
+test('notifies once when the realtime connection fails and clears the warning on recovery', async () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const socketFunction = html.match(/async function connectSocket\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(socketFunction, 'connectSocket must remain available in the application shell');
+
+  const handlers = new Map();
+  const notices = [];
+  const testSocket = {
+    on: (event, handler) => { handlers.set(event, handler); },
+    disconnect() {}
+  };
+  const context = {
+    io: () => testSocket,
+    loadSocketClient: () => Promise.resolve(),
+    socket: null,
+    SERVER_URL: 'https://chat-api.example',
+    token: 'test-token',
+    socketConnectionNoticeShown: false,
+    console: { error() {} },
+    showToast: (...notice) => notices.push(notice)
+  };
+
+  await vm.runInNewContext(`${socketFunction}\nconnectSocket();`, context);
+  handlers.get('connect_error')(new Error('connection refused'));
+  handlers.get('connect_error')(new Error('connection refused'));
+  assert.equal(notices.length, 1);
+  assert.match(notices[0][1], /Live chat unavailable/);
+
+  handlers.get('connect')();
+  assert.equal(notices.length, 2);
+  assert.match(notices[1][1], /Chat connection restored/);
+  assert.equal(context.socketConnectionNoticeShown, false);
+});
+
 async function request(route, options = {}) {
   return fetch(`${baseUrl}${route}`, options);
 }
 
 before(async () => {
   const originalJwtSecret = process.env.JWT_SECRET;
+  const originalPublicBackendUrl = process.env.PUBLIC_BACKEND_URL;
   process.env.JWT_SECRET = jwtSecret;
+  process.env.PUBLIC_BACKEND_URL = 'https://chat-api.example';
   let app;
   try {
     app = require('../server');
   } finally {
     if (originalJwtSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = originalJwtSecret;
+    if (originalPublicBackendUrl === undefined) delete process.env.PUBLIC_BACKEND_URL;
+    else process.env.PUBLIC_BACKEND_URL = originalPublicBackendUrl;
   }
   server = app.server;
   await new Promise((resolve, reject) => {
@@ -184,6 +271,16 @@ test('serves the application shell', async () => {
   const serviceWorker = await request('/sw.js');
   assert.equal(serviceWorker.status, 200);
   assert.match(await serviceWorker.text(), /Klasora/);
+  const socketClient = await request('/socket.io/socket.io.js');
+  assert.equal(socketClient.status, 200);
+  assert.match(socketClient.headers.get('content-type') || '', /javascript/);
+});
+
+test('returns the configured public backend origin without caching', async () => {
+  const response = await request('/api/config');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { backendUrl: 'https://chat-api.example' });
 });
 
 test('rejects protected routes without a token', async () => {

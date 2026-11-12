@@ -48,6 +48,25 @@ const supabaseAuth = supabaseUrl && process.env.SUPABASE_ANON_KEY
   ? createClient(supabaseUrl, process.env.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
   : null;
 
+const getPublicBackendOrigin = value => {
+  if (!value) return '';
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('PUBLIC_BACKEND_URL must be an absolute HTTP(S) URL');
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('PUBLIC_BACKEND_URL must be an origin without credentials, path, query, or fragment');
+  }
+  if ((process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') &&
+      (url.protocol !== 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) {
+    throw new Error('PUBLIC_BACKEND_URL must use a public HTTPS origin in production');
+  }
+  return url.origin;
+};
+const publicBackendUrl = getPublicBackendOrigin(process.env.PUBLIC_BACKEND_URL);
+
 if (!supabase) {
   console.warn('⚠️ Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env');
 }
@@ -339,6 +358,11 @@ const validateCredentials = ({ name, email, password }, includeName = false) => 
 };
 
 // ── AUTH ROUTES ───────────────────────────────────────────────
+app.get('/api/config', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ backendUrl: publicBackendUrl });
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password, color } = req.body;
