@@ -8,7 +8,6 @@
 <link rel="apple-touch-icon" href="/klasora-icon.png">
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/ui-refresh.css">
-<script src="/socket.io/socket.io.js"></script>
 <script src="/ui-refresh.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
@@ -837,10 +836,10 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 const COLORS        = ['#087e7b','#ff6b9d','#22d97a','#ff9f43','#0abde3','#ee5a24','#10ac84','#5f27cd','#ff6348','#2ed573'];
 const EMOJIS        = ['😊','😂','🔥','❤️','👍','👏','😭','🎉','😎','🙌','💯','🤓','📚','✨','💪'];
 const CLIQUE_EMOJIS = ['📚','🎮','🏀','🎵','💻','🎨','⚽','🍕','✈️','🎭','🔬','📸','🏋️','🎯','💡'];
-const SERVER_URL    = '';
+let SERVER_URL      = '';
 
 let authStorage=sessionStorage.getItem('meno_token')?sessionStorage:localStorage;
-let socket=null, token=authStorage.getItem('meno_token')||null, myUser=JSON.parse(authStorage.getItem('meno_user')||'null');
+let socket=null, socketClientPromise=null, socketConnectionNoticeShown=false, token=authStorage.getItem('meno_token')||null, myUser=JSON.parse(authStorage.getItem('meno_user')||'null');
 let pendingAttachment=null, pendingAttachmentPreviewUrl=null;
 let mediaRecorder=null, recordingStream=null, voiceChunks=[], pendingVoiceBlob=null, voicePreviewUrl=null, discardVoiceRecording=false;
 let activeId=null, activeType=null, activeRoomId=null;
@@ -872,6 +871,16 @@ let pc=null, localStream=null, callType=null, callPeer=null, callPeerName=null, 
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init() {
+  try{
+    const response=await fetch('/api/config',{cache:'no-store'});
+    const config=await response.json();
+    if(!response.ok||typeof config.backendUrl!=='string') throw new Error('Backend configuration is unavailable');
+    SERVER_URL=config.backendUrl.replace(/\/+$/,'');
+  }catch(error){
+    console.error('Backend configuration unavailable:',error);
+    SERVER_URL='';
+    showToast('⚠️','Chat server configuration unavailable','Using this site’s API; real-time chat may not connect.');
+  }
   applyTheme(localStorage.getItem('meno_theme')||'dark');
   if(location.search.includes('reset=1')){ showAuth(); showResetPassword(); return; }
   const oauthParams=new URLSearchParams(location.hash.slice(1));
@@ -894,11 +903,12 @@ async function init() {
 async function api(path, method='GET', body=null){
   const opts={method,headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})}};
   if(body) opts.body=JSON.stringify(body);
-  const res=await fetch(SERVER_URL+path,opts);
+  const res=await fetch(apiUrl(path),opts);
   const data=await res.json();
   if(!res.ok) throw new Error(data.error||'Request failed');
   return data;
 }
+function apiUrl(path){return `${SERVER_URL}${path}`;}
 
 // ── AUTH ──────────────────────────────────────────────────────
 function switchTab(t){
@@ -954,7 +964,7 @@ async function updatePassword(){
   if(!accessToken){ err.textContent='This reset link is invalid or expired'; err.style.display='block'; return; }
   btn.disabled=true; btn.textContent='Updating…';
   try{
-    const res=await fetch('/api/auth/update-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken,password})});
+    const res=await fetch(apiUrl('/api/auth/update-password'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken,password})});
     const data=await res.json(); if(!res.ok) throw new Error(data.error||'Request failed');
     history.replaceState(null,'',location.pathname); switchTab('login');
     document.getElementById('lErr').textContent='Password updated. Sign in with your new password.';
@@ -977,7 +987,7 @@ async function signInWithGoogle(){
   btn.disabled=true;
   btn.lastChild.textContent='Connecting to Google…';
   try{
-    const res=await fetch('/api/auth/google');
+    const res=await fetch(apiUrl('/api/auth/google'));
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||'Google sign-in could not be started. Please try again.');
     if(!data.url) throw new Error('Google sign-in could not be started. Please try again.');
@@ -1107,13 +1117,45 @@ function renderMyProfile(){
 }
 
 // ── SOCKET ────────────────────────────────────────────────────
-function connectSocket(){
-  if(typeof io!=='function'){
-    showToast('⚠️','Live chat unavailable','Realtime chat is not supported on this deployment.');
+function loadSocketClient(){
+  if(typeof io==='function')return Promise.resolve();
+  if(socketClientPromise)return socketClientPromise;
+  socketClientPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src=apiUrl('/socket.io/socket.io.js');
+    script.async=true;
+    script.onload=()=>{
+      if(typeof io==='function'){resolve();return;}
+      socketClientPromise=null;
+      reject(new Error('The chat server did not provide its realtime client.'));
+    };
+    script.onerror=()=>{
+      socketClientPromise=null;
+      reject(new Error('The realtime chat client could not be loaded.'));
+    };
+    document.head.appendChild(script);
+  });
+  return socketClientPromise;
+}
+async function connectSocket(){
+  try{await loadSocketClient();}
+  catch(error){
+    console.error('Realtime chat client unavailable:',error);
+    showToast('⚠️','Live chat unavailable','Could not load the chat client from the configured backend.');
     return;
   }
   if(socket) socket.disconnect();
   socket=io(SERVER_URL,{auth:{token}});
+  socket.on('connect',()=>{
+    if(socketConnectionNoticeShown) showToast('✅','Chat connection restored','Live messages are available again.');
+    socketConnectionNoticeShown=false;
+  });
+  socket.on('connect_error',error=>{
+    console.error('Realtime chat connection failed:',error);
+    if(socketConnectionNoticeShown) return;
+    socketConnectionNoticeShown=true;
+    showToast('⚠️','Live chat unavailable','The chat server is disconnected. Messages and calls may not work.');
+  });
   socket.on('new_message', msg=>{
     if(msg.roomId===activeRoomId){
       appendMessage(msg);
@@ -1386,9 +1428,12 @@ function updateMessageStatus(msgId,status,deliveredAt,readBy){
 
 // ── SEND ──────────────────────────────────────────────────────
 function sendMsg(){
+  const inp=document.getElementById('msgInp'), text=inp.value.trim();
+  if(!activeRoomId||(!pendingAttachment&&!pendingVoiceBlob&&!text))return;
+  if(!socket?.connected){showToast('⚠️','Live chat unavailable','Reconnect before sending; your message is still here.');return;}
   if(pendingAttachment){ sendAttachment(); return; }
   if(pendingVoiceBlob){ sendVoiceNote(); return; }
-  const inp=document.getElementById('msgInp'), text=inp.value.trim(); if(!text||!activeRoomId||!socket)return;
+  if(!text)return;
   inp.value=''; inp.style.height='auto'; stopTyping();
   socket.emit('send_message',{roomId:activeRoomId,text,senderName:myUser.name,senderColor:myUser.color||'#087e7b'});
 }
@@ -1734,6 +1779,7 @@ const ICE_SERVERS={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun
 
 async function startCall(type){
   if(!callPeer){showToast('❌','No peer','Open a DM first');return;}
+  if(!socket?.connected){showToast('⚠️','Live chat unavailable','Reconnect before starting a call.');return;}
   callType=type; callDirection='outgoing'; callRoomId=activeRoomId;
   muted=false; speakerMuted=false; callConnectedAt=null;
   callLogId=window.KlasoraRefresh?.recordCall({userId:callPeer,name:callPeerName||'Klasora member',mode:type,direction:'outgoing',status:'calling'})||null;
@@ -1909,7 +1955,7 @@ async function uploadCourseFile(input){
   const folderId=document.getElementById('courseFileFolder').value;
   if(folderId&&folderId!=='none')form.append('folderId',folderId);
   try{
-    const res=await fetch(`/api/courses/${activeId}/files`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
+    const res=await fetch(apiUrl(`/api/courses/${activeId}/files`),{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
     const data=await res.json(); if(!res.ok)throw new Error(data.error||'Upload failed');
     input.value=''; await loadCourseFiles();
   }catch(e){err.textContent=e.message;err.style.display='block';}
