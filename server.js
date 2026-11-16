@@ -293,7 +293,7 @@ const publicCliqueSummary = clique => ({
   _id: clique._id,
   name: clique.name,
   description: clique.description || '',
-  emoji: clique.emoji || '◉',
+  emoji: clique.emoji || 'users-round',
   color: clique.color || '#087e7b',
   visibility: clique.visibility === 'public' ? 'public' : 'private',
   memberCount: Array.isArray(clique.members) ? clique.members.length : 0
@@ -770,7 +770,7 @@ app.post('/api/cliques', auth, async (req, res) => {
     }
     const members = [...new Set([req.userId.toString(), ...uniqueMemberIds])];
     const clique = await Clique.create({
-      name, description, visibility, emoji: req.body.emoji || '🔗',
+      name, description, visibility, emoji: req.body.emoji || 'users-round',
       color: req.body.color || '#087e7b', members, createdBy: req.userId
     });
     clique.members = await hydrateMembers(clique.members || []);

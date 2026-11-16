@@ -104,7 +104,7 @@ create table if not exists cliques (
   name text not null,
   description text not null default '',
   visibility text not null default 'private' check (visibility in ('private', 'public')),
-  emoji text not null default '??',
+  emoji text not null default 'users-round',
   color text not null default '#087e7b',
   members uuid[] not null default '{}',
   created_by uuid references users(id) on delete set null,
@@ -113,6 +113,8 @@ create table if not exists cliques (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table cliques alter column emoji set default 'users-round';
 
 alter table cliques add column if not exists description text not null default '';
 alter table cliques add column if not exists visibility text not null default 'private';

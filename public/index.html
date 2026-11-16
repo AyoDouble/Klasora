@@ -8,9 +8,15 @@
 <link rel="apple-touch-icon" href="/klasora-icon.png">
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/ui-refresh.css">
+<script defer src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+<script src="/icons.js"></script>
+<script src="/timer-sound.js"></script>
 <script src="/ui-refresh.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
+
+iconify-icon{display:inline-flex;width:1em;height:1em;flex:0 0 auto;align-items:center;justify-content:center;vertical-align:-0.15em}
+iconify-icon.theme-sun-icon{color:#f3b51b}
 
 /* ── THEMES ── */
 [data-theme="dark"] {
@@ -281,7 +287,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 @keyframes voicepulse{50%{opacity:.45;}}
 .ep{position:absolute;bottom:80px;left:1.3rem;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0.7rem;display:none;flex-wrap:wrap;gap:4px;width:248px;box-shadow:0 8px 32px var(--shadow);z-index:100;}
 .ep.show{display:flex;}
-.ep-e{font-size:1.2rem;cursor:pointer;padding:4px;border-radius:6px;transition:background 0.1s;}
+.ep-e{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:inherit;font-size:1.2rem;cursor:pointer;padding:4px;border-radius:6px;transition:background 0.1s;}
 .ep-e:hover{background:var(--surface3);}
 .input-row{display:flex;align-items:flex-end;gap:0.5rem;background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:0.55rem 0.75rem;transition:border-color 0.2s,box-shadow .2s;}
 .input-row:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(7,126,123,0.08);}
@@ -364,7 +370,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 .mbtn.sec{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
 .mbtn.sec:hover{color:var(--text);}
 .emoji-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:0.9rem;}
-.eg-opt{font-size:1.2rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;border:2px solid transparent;transition:all 0.15s;background:var(--surface2);}
+.eg-opt{font-size:1.2rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;border:2px solid transparent;transition:all 0.15s;background:var(--surface2);color:var(--text);padding:0;}
 .eg-opt.selected{border-color:var(--accent);background:var(--glow);transform:scale(1.1);}
 .intro-overlay{position:fixed;inset:0;z-index:800;display:none;align-items:center;justify-content:center;padding:1rem;background:rgba(7,8,14,.78);backdrop-filter:blur(10px);}
 .intro-overlay.show{display:flex;}
@@ -398,7 +404,8 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 /* ── NOTIFICATION TOAST ── */
 .toast{position:fixed;top:1rem;right:1rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0.85rem 1.1rem;z-index:999;display:none;align-items:center;gap:0.7rem;box-shadow:0 8px 32px var(--shadow);animation:slideInRight 0.3s ease;max-width:300px;}
 .toast.show{display:flex;}
-.toast-icon{font-size:1.2rem;}
+.toast-icon{display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+.theme-sun-icon{color:#f3b51b;}
 .toast-body{flex:1;}
 .toast-title{font-size:0.8rem;font-weight:700;}
 .toast-msg{font-size:0.72rem;color:var(--text2);margin-top:1px;}
@@ -536,9 +543,9 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       <div class="sidebar-logo">
         <img class="brand-logo-sidebar" src="/klasora-icon.png" alt="Klasora">
         <div class="top-actions">
-          <button class="icon-pill" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-          <button class="icon-pill" onclick="window.KlasoraRefresh?.navigate('settings')" title="Settings">⚙️</button>
-          <button class="icon-pill" onclick="doLogout()" title="Sign out">🚪</button>
+          <button class="icon-pill" id="themeBtn" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"><iconify-icon icon="lucide:moon" aria-hidden="true"></iconify-icon></button>
+          <button class="icon-pill" onclick="window.KlasoraRefresh?.navigate('settings')" title="Settings" aria-label="Settings"><iconify-icon icon="lucide:settings" aria-hidden="true"></iconify-icon></button>
+          <button class="icon-pill" onclick="doLogout()" title="Sign out" aria-label="Sign out"><iconify-icon icon="lucide:log-out" aria-hidden="true"></iconify-icon></button>
         </div>
       </div>
     </div>
@@ -550,24 +557,24 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       </div>
     </div>
     <div class="workspace-primary-tabs" role="tablist" aria-label="Messages and courses">
-      <button id="primary-chats" class="active" type="button" role="tab" aria-selected="true" onclick="switchTab2('chats')"><span>◉</span>Cliques</button>
-      <button id="primary-courses" type="button" role="tab" aria-selected="false" onclick="switchTab2('courses')"><span>▤</span>Courses</button>
+      <button id="primary-chats" class="active" type="button" role="tab" aria-selected="true" onclick="switchTab2('chats')"><span> <iconify-icon icon="lucide:users-round" aria-hidden="true"></iconify-icon></span>Cliques</button>
+      <button id="primary-courses" type="button" role="tab" aria-selected="false" onclick="switchTab2('courses')"><span><iconify-icon icon="lucide:book-open" aria-hidden="true"></iconify-icon></span>Courses</button>
     </div>
     <div class="sub-nav" id="chatSubNav">
-      <button id="sub-dms" class="active" onclick="switchTab2('chats')"><span class="legacy-tab-icon">◉</span>Direct</button>
-      <button id="sub-groups" style="display:none" onclick="setChatMode('cliques')"><span class="legacy-tab-icon">◎</span>Groups</button>
-      <button id="sub-calls" onclick="switchTab2('calls')"><span class="legacy-tab-icon">⌕</span>Calls</button>
+      <button id="sub-dms" class="active" onclick="switchTab2('chats')"><span class="legacy-tab-icon"><iconify-icon icon="lucide:message-circle" aria-hidden="true"></iconify-icon></span>Direct</button>
+      <button id="sub-groups" style="display:none" onclick="setChatMode('cliques')"><span class="legacy-tab-icon"><iconify-icon icon="lucide:users-round" aria-hidden="true"></iconify-icon></span>Groups</button>
+      <button id="sub-calls" onclick="switchTab2('calls')"><span class="legacy-tab-icon"><iconify-icon icon="lucide:phone" aria-hidden="true"></iconify-icon></span>Calls</button>
     </div>
     <div class="sub-nav" id="courseSubNav" style="display:none;">
-      <button id="sub-courses" class="active" onclick="switchTab2('courses')"><span class="legacy-tab-icon">▤</span>Courses</button>
-      <button id="sub-homework" onclick="switchTab2('homework')"><span class="legacy-tab-icon">✓</span>Homework</button>
-      <button id="sub-notes" onclick="switchTab2('notes')"><span class="legacy-tab-icon">▤</span>Notes</button>
+      <button id="sub-courses" class="active" onclick="switchTab2('courses')"><span class="legacy-tab-icon"><iconify-icon icon="lucide:book-open" aria-hidden="true"></iconify-icon></span>Courses</button>
+      <button id="sub-homework" onclick="switchTab2('homework')"><span class="legacy-tab-icon"><iconify-icon icon="lucide:list-checks" aria-hidden="true"></iconify-icon></span>Homework</button>
+      <button id="sub-notes" onclick="switchTab2('notes')"><span class="legacy-tab-icon"><iconify-icon icon="lucide:notebook-pen" aria-hidden="true"></iconify-icon></span>Notes</button>
     </div>
 
     <!-- CREATE COURSE MODAL -->
     <div class="overlay" id="courseModal" onclick="overlayClose(event,'courseModal')">
       <div class="modal">
-        <div class="modal-title">Create a Course Space 🎓</div>
+        <div class="modal-title">Create a Course Space</div>
         <div class="modal-sub">Keep your course chat and classmates together</div>
         <input class="modal-inp" id="courseName" placeholder="Course name, e.g. Biology 101">
         <input class="modal-inp" id="courseCode" placeholder="Course code (optional)">
@@ -575,7 +582,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
         <div class="modal-err" id="courseErr"></div>
         <div class="modal-acts">
           <button class="mbtn sec" onclick="closeModal('courseModal')">Cancel</button>
-          <button class="mbtn pri" onclick="createCourse()">Create →</button>
+          <button class="mbtn pri" onclick="createCourse()">Create <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
         </div>
       </div>
     </div>
@@ -583,7 +590,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       <input class="search-input" type="text" id="searchInp" placeholder="Search conversations or messages…" oninput="onSearch(this.value)">
     </div>
     <div class="add-wrap" id="addWrap">
-      <button class="add-btn" id="addBtn" onclick="onAddBtn()">＋ <span id="addBtnTxt">New Message</span></button>
+      <button class="add-btn" id="addBtn" onclick="onAddBtn()"><iconify-icon icon="lucide:plus" aria-hidden="true"></iconify-icon> <span id="addBtnTxt">New Message</span></button>
     </div>
     <div class="chat-filters" id="chatFilters">
       <button class="chat-filter active" id="chat-filter-dms" onclick="setChatMode('dms')">Direct</button>
@@ -601,77 +608,77 @@ video{border-radius:16px;background:#000;object-fit:cover;}
     </div>
     <div id="chatView" style="display:none;flex:1;flex-direction:column;height:100vh;overflow:hidden;">
       <div class="chat-header">
-        <button class="mobile-back" onclick="closeMobileChat()" title="Back to conversations">‹</button>
+        <button class="mobile-back" onclick="closeMobileChat()" title="Back to conversations" aria-label="Back to conversations"><iconify-icon icon="lucide:arrow-left" aria-hidden="true"></iconify-icon></button>
         <div class="avatar" id="chAv" style="width:38px;height:38px;font-size:0.88rem;border-radius:12px;"></div>
         <div class="ch-info">
           <div class="ch-name" id="chName"></div>
           <div class="ch-sub" id="chSub"></div>
         </div>
         <div class="hdr-btns">
-          <button type="button" class="hdr-btn" id="voiceCallBtn" style="display:none" onclick="startCall('voice')" title="Voice call" aria-label="Voice call">⌕</button>
-          <button type="button" class="hdr-btn" id="videoCallBtn" style="display:none" onclick="startCall('video')" title="Video call" aria-label="Video call">▣</button>
-          <button type="button" class="hdr-btn" id="membersBtn" style="display:none" onclick="showMembers()" title="View members" aria-label="View members">♙</button>
-          <button type="button" class="hdr-btn" id="courseFilesBtn" style="display:none" onclick="showCourseFiles()" title="Course files" aria-label="Course files">▤</button>
-          <button type="button" class="hdr-btn" id="aiToggleBtn" onclick="toggleAI()" title="Toggle AI assistant" aria-label="Toggle AI assistant">✧</button>
+          <button type="button" class="hdr-btn" id="voiceCallBtn" style="display:none" onclick="startCall('voice')" title="Voice call" aria-label="Voice call"><iconify-icon icon="lucide:phone-call" aria-hidden="true"></iconify-icon></button>
+          <button type="button" class="hdr-btn" id="videoCallBtn" style="display:none" onclick="startCall('video')" title="Video call" aria-label="Video call"><iconify-icon icon="lucide:video" aria-hidden="true"></iconify-icon></button>
+          <button type="button" class="hdr-btn" id="membersBtn" style="display:none" onclick="showMembers()" title="View members" aria-label="View members"><iconify-icon icon="lucide:users-round" aria-hidden="true"></iconify-icon></button>
+          <button type="button" class="hdr-btn" id="courseFilesBtn" style="display:none" onclick="showCourseFiles()" title="Course files" aria-label="Course files"><iconify-icon icon="lucide:book-open" aria-hidden="true"></iconify-icon></button>
+          <button type="button" class="hdr-btn" id="aiToggleBtn" onclick="toggleAI()" title="Toggle AI assistant" aria-label="Toggle AI assistant"><iconify-icon icon="lucide:sparkles" aria-hidden="true"></iconify-icon></button>
         </div>
       </div>
       <div class="messages" id="messages"></div>
       <div class="typing-wrap"><div class="typing-ind" id="typInd" style="display:none;"><div class="tdots"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div><span id="typTxt"></span></div></div>
       <!-- AI BAR -->
       <div class="ai-bar" id="aiBar" style="display:none;">
-        <span class="ai-label">🤖 AI</span>
+        <span class="ai-label"><iconify-icon icon="lucide:bot" aria-hidden="true"></iconify-icon> AI</span>
         <input class="ai-inp" id="aiInp" placeholder="Ask about this course…" onkeydown="if(event.key==='Enter')askAI()">
-        <button class="ai-ask-btn" onclick="generateStudyTool('flashcards')" title="Generate flashcards">🃏</button>
-        <button class="ai-ask-btn" onclick="generateStudyTool('quiz')" title="Generate quiz">❓</button>
-        <button class="ai-ask-btn" id="aiAskBtn" onclick="askAI()">Ask →</button>
+        <button class="ai-ask-btn" onclick="generateStudyTool('flashcards')" title="Generate flashcards" aria-label="Generate flashcards"><iconify-icon icon="lucide:layers-2" aria-hidden="true"></iconify-icon></button>
+        <button class="ai-ask-btn" onclick="generateStudyTool('quiz')" title="Generate quiz" aria-label="Generate quiz"><iconify-icon icon="lucide:circle-help" aria-hidden="true"></iconify-icon></button>
+        <button class="ai-ask-btn" id="aiAskBtn" onclick="askAI()">Ask <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
       </div>
       <div class="input-area">
         <div class="ep" id="ep"></div>
         <div class="attachment-preview" id="attachmentPreview">
-          <div class="attachment-thumb" id="attachmentThumb">📄</div>
+          <div class="attachment-thumb" id="attachmentThumb"><iconify-icon icon="lucide:file-text" aria-hidden="true"></iconify-icon></div>
           <div class="attachment-info"><div class="attachment-name" id="attachmentName"></div><div class="attachment-size" id="attachmentSize"></div></div>
           <button class="attachment-action attachment-cancel" onclick="clearAttachment()" type="button">Remove</button>
           <button class="attachment-action attachment-send" onclick="sendAttachment()" type="button">Send</button>
         </div>
         <div class="voice-preview" id="voicePreview">
-          <span class="voice-recording" id="voiceStatus">● Recording</span>
+          <span class="voice-recording" id="voiceStatus"><iconify-icon icon="lucide:circle" aria-hidden="true"></iconify-icon> Recording</span>
           <audio id="voiceAudio" controls></audio>
           <button class="attachment-action attachment-cancel" onclick="clearVoiceNote()" type="button">Remove</button>
           <button class="attachment-action attachment-send" onclick="sendVoiceNote()" type="button">Send</button>
         </div>
         <div class="input-row">
           <div class="input-actions">
-            <button class="i-btn" onclick="toggleEp()" title="Emoji">😊</button>
-            <button class="i-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">📎</button>
-            <button class="i-btn" id="voiceBtn" onclick="toggleVoiceRecording()" title="Record voice note">🎙️</button>
+            <button class="i-btn" onclick="toggleEp()" title="Emoji" aria-label="Open emoji picker"><iconify-icon icon="lucide:smile-plus" aria-hidden="true"></iconify-icon></button>
+            <button class="i-btn" onclick="document.getElementById('fileInput').click()" title="Attach file" aria-label="Attach file"><iconify-icon icon="lucide:file-plus-2" aria-hidden="true"></iconify-icon></button>
+            <button class="i-btn" id="voiceBtn" onclick="toggleVoiceRecording()" title="Record voice note" aria-label="Record voice note"><iconify-icon icon="lucide:audio-lines" aria-hidden="true"></iconify-icon></button>
             <input type="file" id="fileInput" style="display:none" onchange="queueAttachment(this)">
           </div>
           <textarea class="msg-inp" id="msgInp" placeholder="Message…" rows="1" onkeydown="onKey(event)" oninput="onTyping()" onblur="stopTyping()"></textarea>
-          <button class="send-btn" onclick="sendMsg()">➤</button>
+          <button class="send-btn" onclick="sendMsg()" aria-label="Send message"><iconify-icon icon="lucide:send" aria-hidden="true"></iconify-icon></button>
         </div>
       </div>
     </div>
   </div>
   <aside class="workspace-details" id="workspaceDetails" aria-label="Conversation details">
     <div class="workspace-details-empty">
-      <div class="workspace-details-mark">◈</div>
+      <div class="workspace-details-mark"><iconify-icon icon="lucide:layout-dashboard" aria-hidden="true"></iconify-icon></div>
       <strong>Room details</strong>
       <span>Choose a conversation or course to see its people and helpful shortcuts.</span>
     </div>
   </aside>
 </div>
 <nav class="mobile-bottom-nav" aria-label="Main navigation">
-  <button id="mobile-nav-home" onclick="window.KlasoraRefresh?.navigate('feed')"><span>◈</span>Home</button>
-  <button id="mobile-nav-cliques" onclick="window.KlasoraRefresh?.navigate('cliques')"><span>◉</span>Cliques</button>
-  <button id="mobile-nav-focus" onclick="window.KlasoraRefresh?.navigate('focus')"><span>◎</span>Study capsule</button>
-  <button id="mobile-nav-timetable" onclick="window.KlasoraRefresh?.navigate('timetable')"><span>▦</span>Timetable</button>
-  <button id="mobile-nav-assignments" onclick="window.KlasoraRefresh?.navigate('assignments')"><span>✓</span>Assignments & tasks</button>
-  <button id="mobile-nav-courses" onclick="window.KlasoraRefresh?.navigate('courses')"><span>▤</span>Courses</button>
+  <button id="mobile-nav-home" onclick="window.KlasoraRefresh?.navigate('feed')"><span><iconify-icon icon="lucide:layout-dashboard" aria-hidden="true"></iconify-icon></span>Home</button>
+  <button id="mobile-nav-cliques" onclick="window.KlasoraRefresh?.navigate('cliques')"><span><iconify-icon icon="lucide:users-round" aria-hidden="true"></iconify-icon></span>Cliques</button>
+  <button id="mobile-nav-focus" onclick="window.KlasoraRefresh?.navigate('focus')"><span><iconify-icon icon="lucide:timer" aria-hidden="true"></iconify-icon></span>Study capsule</button>
+  <button id="mobile-nav-timetable" onclick="window.KlasoraRefresh?.navigate('timetable')"><span><iconify-icon icon="lucide:calendar-days" aria-hidden="true"></iconify-icon></span>Timetable</button>
+  <button id="mobile-nav-assignments" onclick="window.KlasoraRefresh?.navigate('assignments')"><span><iconify-icon icon="lucide:list-checks" aria-hidden="true"></iconify-icon></span>Assignments & tasks</button>
+  <button id="mobile-nav-courses" onclick="window.KlasoraRefresh?.navigate('courses')"><span><iconify-icon icon="lucide:book-open" aria-hidden="true"></iconify-icon></span>Courses</button>
 </nav>
 
 <!-- CALL OVERLAY -->
 <div class="call-overlay" id="callOverlay">
-  <div class="call-brand"><span>☎</span> KLASORA</div>
+  <div class="call-brand"><span><iconify-icon icon="lucide:phone" aria-hidden="true"></iconify-icon></span> KLASORA</div>
   <div class="call-videos" id="callVideos" style="display:none;">
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo"  autoplay playsinline muted></video>
@@ -681,10 +688,10 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <div class="call-status" id="callStatus">Calling…</div>
   <div class="call-duration" id="callDuration">00:00</div>
   <div class="call-btns">
-    <button class="call-btn mute" id="speakerBtn" onclick="toggleSpeaker()" title="Speaker" aria-label="Toggle speaker">◖))</button>
-    <button class="call-btn mute" id="muteBtn" onclick="toggleMute()" title="Mute" aria-label="Mute microphone">🎙</button>
-    <button class="call-btn mute" id="cameraBtn" onclick="toggleCamera()" title="Turn camera off" aria-label="Turn camera off" hidden>▣</button>
-    <button class="call-btn end" onclick="endCall()" title="End call" aria-label="End call">☎</button>
+    <button class="call-btn mute" id="speakerBtn" onclick="toggleSpeaker()" title="Speaker" aria-label="Toggle speaker"><iconify-icon icon="lucide:volume-2" aria-hidden="true"></iconify-icon></button>
+    <button class="call-btn mute" id="muteBtn" onclick="toggleMute()" title="Mute" aria-label="Mute microphone"><iconify-icon icon="lucide:mic" aria-hidden="true"></iconify-icon></button>
+    <button class="call-btn mute" id="cameraBtn" onclick="toggleCamera()" title="Turn camera off" aria-label="Turn camera off" hidden><iconify-icon icon="lucide:video" aria-hidden="true"></iconify-icon></button>
+    <button class="call-btn end" onclick="endCall()" title="End call" aria-label="End call"><iconify-icon icon="lucide:phone-off" aria-hidden="true"></iconify-icon></button>
   </div>
 </div>
 
@@ -693,17 +700,17 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   <div class="call-avatar" id="incAvatar" style="width:44px;height:44px;font-size:1rem;border-radius:50%;margin:0;border:none;"></div>
   <div class="inc-info">
     <div class="inc-name" id="incName">Someone</div>
-    <div class="inc-type" id="incType">📞 Voice call</div>
+    <div class="inc-type" id="incType"><iconify-icon icon="lucide:phone" aria-hidden="true"></iconify-icon> Voice call</div>
   </div>
   <div class="inc-btns">
-    <button class="inc-btn accept" onclick="acceptCall()">✓</button>
-    <button class="inc-btn reject" onclick="rejectCall()">✕</button>
+    <button class="inc-btn accept" onclick="acceptCall()" aria-label="Accept call"><iconify-icon icon="lucide:check" aria-hidden="true"></iconify-icon></button>
+    <button class="inc-btn reject" onclick="rejectCall()" aria-label="Reject call"><iconify-icon icon="lucide:x" aria-hidden="true"></iconify-icon></button>
   </div>
 </div>
 
 <!-- NOTIFICATION TOAST -->
 <div class="toast" id="toast">
-  <div class="toast-icon" id="toastIcon">💬</div>
+  <div class="toast-icon" id="toastIcon"><iconify-icon icon="lucide:message-circle" aria-hidden="true"></iconify-icon></div>
   <div class="toast-body">
     <div class="toast-title" id="toastTitle"></div>
     <div class="toast-msg"   id="toastMsg"></div>
@@ -713,7 +720,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 <!-- FIRST-VISIT INTRO -->
 <div class="intro-overlay" id="introOverlay" role="dialog" aria-modal="true" aria-labelledby="introTitle">
   <div class="intro-card">
-    <div class="intro-art" id="introArt">👋</div>
+    <div class="intro-art" id="introArt"><iconify-icon icon="lucide:hand" aria-hidden="true"></iconify-icon></div>
     <div class="intro-content">
       <div class="intro-kicker" id="introKicker">Welcome to Klasora</div>
       <div class="intro-title" id="introTitle">Your circle, all in one place</div>
@@ -721,7 +728,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       <div class="intro-dots" id="introDots"></div>
       <div class="intro-actions">
         <button class="intro-skip" onclick="finishIntro()">Skip tour</button>
-        <button class="intro-next" id="introNext" onclick="nextIntro()">Show me around →</button>
+        <button class="intro-next" id="introNext" onclick="nextIntro()">Show me around <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
       </div>
     </div>
   </div>
@@ -736,7 +743,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
     <div class="modal-err" id="dmErr"></div>
     <div class="modal-acts">
       <button class="mbtn sec" onclick="closeModal('dmModal')">Cancel</button>
-      <button class="mbtn pri" onclick="startDM()">Start DM →</button>
+      <button class="mbtn pri" onclick="startDM()">Start DM <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
     </div>
   </div>
 </div>
@@ -744,16 +751,16 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 <!-- CREATE CLIQUE MODAL -->
 <div class="overlay" id="cliqueModal" onclick="overlayClose(event,'cliqueModal')">
   <div class="modal">
-    <div class="modal-title">Create a Clique 🔗</div>
+    <div class="modal-title">Create a Clique</div>
     <div class="modal-sub">A tight group for you and your people</div>
     <input class="modal-inp" id="cliqueName" placeholder="e.g. Study Squad">
-    <div style="font-size:0.68rem;font-weight:700;color:var(--text2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.5rem;">Pick an Emoji</div>
+    <div style="font-size:0.68rem;font-weight:700;color:var(--text2);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.5rem;">Choose an Icon</div>
     <div class="emoji-grid" id="cEmojiGrid"></div>
     <input class="modal-inp" id="cliqueEmails" placeholder="Add members by email (comma separated)">
     <div class="modal-err" id="cliqueErr"></div>
     <div class="modal-acts">
       <button class="mbtn sec" onclick="closeModal('cliqueModal')">Cancel</button>
-      <button class="mbtn pri" onclick="createClique()">Create →</button>
+      <button class="mbtn pri" onclick="createClique()">Create <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
     </div>
   </div>
 </div>
@@ -761,22 +768,22 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 <!-- ADD HOMEWORK MODAL -->
 <div class="overlay" id="hwModal" onclick="overlayClose(event,'hwModal')">
   <div class="modal">
-    <div class="modal-title">Add Assignment 📚</div>
+    <div class="modal-title">Add Assignment</div>
     <div class="modal-sub">Track your homework and deadlines</div>
     <input class="modal-inp" id="hwTitle" placeholder="Assignment title">
     <input class="modal-inp" id="hwSubject" placeholder="Subject (e.g. Math, Biology)">
     <select class="modal-sel" id="hwCourse"><option value="">Personal assignment</option></select>
     <input class="modal-inp" id="hwDue" type="date">
     <select class="modal-sel" id="hwPriority">
-      <option value="low">🟢 Low priority</option>
-      <option value="medium" selected>🟡 Medium priority</option>
-      <option value="high">🔴 High priority</option>
+      <option value="low">Low priority</option>
+      <option value="medium" selected>Medium priority</option>
+      <option value="high">High priority</option>
     </select>
     <textarea class="modal-inp" id="hwNotes" placeholder="Notes (optional)" rows="2" style="resize:none;"></textarea>
     <div class="modal-err" id="hwErr"></div>
     <div class="modal-acts">
       <button class="mbtn sec" onclick="closeModal('hwModal')">Cancel</button>
-      <button class="mbtn pri" onclick="addHomework()">Add →</button>
+      <button class="mbtn pri" onclick="addHomework()">Add <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
     </div>
 
   </div>
@@ -785,7 +792,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 <!-- ADD NOTE MODAL -->
 <div class="overlay" id="noteModal" onclick="overlayClose(event,'noteModal')">
   <div class="modal">
-    <div class="modal-title">Add Course Note 📝</div>
+    <div class="modal-title">Add Course Note</div>
     <div class="modal-sub">Save a study note inside one of your courses</div>
     <select class="modal-sel" id="noteCourse"><option value="">Choose a course</option></select>
     <input class="modal-inp" id="noteTitle" placeholder="Note title">
@@ -793,7 +800,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
     <div class="modal-err" id="noteErr"></div>
     <div class="modal-acts">
       <button class="mbtn sec" onclick="closeModal('noteModal')">Cancel</button>
-      <button class="mbtn pri" onclick="addNote()">Save →</button>
+      <button class="mbtn pri" onclick="addNote()">Save <iconify-icon icon="lucide:arrow-right" aria-hidden="true"></iconify-icon></button>
     </div>
   </div>
 </div>
@@ -801,7 +808,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 <!-- MEMBERS MODAL -->
 <div class="overlay" id="membersModal" onclick="overlayClose(event,'membersModal')">
   <div class="modal">
-    <div class="modal-title">Clique Members 👥</div>
+    <div class="modal-title">Clique Members</div>
     <div class="modal-sub" id="membersCliqueName"></div>
     <div id="membersList" style="margin-bottom:0.8rem;max-height:200px;overflow-y:auto;"></div>
     <input class="modal-inp" id="addMemberEmail" placeholder="Add member by email">
@@ -813,7 +820,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 
     <div class="overlay" id="courseFilesModal" onclick="overlayClose(event,'courseFilesModal')">
       <div class="modal">
-        <div class="modal-title">Course Files 📁</div>
+        <div class="modal-title">Course Files</div>
         <div class="modal-sub" id="courseFilesSubtitle"></div>
         <input class="modal-inp" id="courseFilesSearch" placeholder="Search files…" oninput="loadCourseFiles()">
         <select class="modal-sel" id="courseFileFolder" onchange="loadCourseFiles()"><option value="">All folders</option></select>
@@ -834,8 +841,14 @@ video{border-radius:16px;background:#000;object-fit:cover;}
 
 <script>
 const COLORS        = ['#087e7b','#ff6b9d','#22d97a','#ff9f43','#0abde3','#ee5a24','#10ac84','#5f27cd','#ff6348','#2ed573'];
-const EMOJIS        = ['😊','😂','🔥','❤️','👍','👏','😭','🎉','😎','🙌','💯','🤓','📚','✨','💪'];
-const CLIQUE_EMOJIS = ['📚','🎮','🏀','🎵','💻','🎨','⚽','🍕','✈️','🎭','🔬','📸','🏋️','🎯','💡'];
+const EMOJIS = [
+  { icon:'smile', value:'😊' }, { icon:'laugh', value:'😂' }, { icon:'flame', value:'🔥' },
+  { icon:'heart', value:'❤️' }, { icon:'thumbs-up', value:'👍' }, { icon:'hand', value:'👏' },
+  { icon:'frown', value:'😭' }, { icon:'party-popper', value:'🎉' }, { icon:'glasses', value:'😎' },
+  { icon:'hand-heart', value:'🙌' }, { icon:'badge-check', value:'💯' }, { icon:'glasses', value:'🤓' },
+  { icon:'book-open', value:'📚' }, { icon:'sparkles', value:'✨' }, { icon:'dumbbell', value:'💪' }
+];
+const CLIQUE_ICONS = ['book-open','gamepad-2','basketball','music-2','laptop','palette','circle-dot','pizza','plane','drama','microscope','camera','dumbbell','target','lightbulb'];
 let SERVER_URL      = '';
 
 let authStorage=sessionStorage.getItem('meno_token')?sessionStorage:localStorage;
@@ -846,7 +859,7 @@ let activeId=null, activeType=null, activeRoomId=null;
 let activeChatRequest=0;
 const studyQuizzes=new Map();
 let allItems=[], sideTab='chats', chatMode='dms';
-let selCliqueEmoji=CLIQUE_EMOJIS[0];
+let selCliqueEmoji=CLIQUE_ICONS[0];
 let typTimer=null, typingUsers={};
 let aiVisible=false;
 
@@ -1029,7 +1042,10 @@ function showAuth(){
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme',t);
   localStorage.setItem('meno_theme',t);
-  document.getElementById('themeBtn').textContent=t==='dark'?'☀️':'🌙';
+  const icon=t==='dark'?'moon':'sun';
+  document.getElementById('themeBtn').innerHTML=window.KlasoraIcons.markup(icon,t==='light'?'theme-sun-icon':'');
+  document.getElementById('themeBtn').setAttribute('aria-label',`Toggle theme; current theme is ${t}`);
+  window.KlasoraRefresh?.updateThemeIcon(t);
 }
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme');
@@ -1088,10 +1104,10 @@ function showApp(){
   if(localStorage.getItem('meno_intro_seen')!=='1') setTimeout(showIntro,450);
 }
 const INTRO_STEPS=[
-  {art:'💬',kicker:'Cliques',title:'Talk to your people',copy:'Keep direct messages and group conversations together in one familiar chat space.'},
-  {art:'🎓',kicker:'Courses',title:'Study in your own spaces',copy:'Create private course rooms, share notes, manage assignments, and keep course files close to the conversation.'},
-  {art:'🍅',kicker:'Study capsule',title:'Make progress, one session at a time',copy:'Use your Study Capsule to run a focus session and build a study rhythm without leaving Klasora.'},
-  {art:'⚙️',kicker:'Settings',title:'Make Klasora yours',copy:'Change your theme, manage notifications, and find account controls from Settings whenever you need them.'}
+  {art:'message-circle',kicker:'Cliques',title:'Talk to your people',copy:'Keep direct messages and group conversations together in one familiar chat space.'},
+  {art:'graduation-cap',kicker:'Courses',title:'Study in your own spaces',copy:'Create private course rooms, share notes, manage assignments, and keep course files close to the conversation.'},
+  {art:'timer',kicker:'Study capsule',title:'Make progress, one session at a time',copy:'Use your Study Capsule to run a focus session and build a study rhythm without leaving Klasora.'},
+  {art:'settings',kicker:'Settings',title:'Make Klasora yours',copy:'Change your theme, manage notifications, and find account controls from Settings whenever you need them.'}
 ];
 let introStep=0;
 function showIntro(){introStep=0;renderIntro();document.getElementById('introOverlay').classList.add('show');}
@@ -1099,13 +1115,14 @@ function renderIntro(){
   const step=INTRO_STEPS[introStep];
   const art=document.getElementById('introArt');
   if(introStep===0)art.innerHTML='<img class="brand-logo-intro" src="/klasora-wordmark.png" alt="Klasora">';
-  else art.textContent=step.art;
+  else art.innerHTML=window.KlasoraIcons.markup(step.art);
   document.getElementById('introKicker').textContent=step.kicker;
   document.getElementById('introTitle').textContent=step.title;
   document.getElementById('introCopy').textContent=step.copy;
   document.getElementById('introDots').innerHTML=INTRO_STEPS.map((_,i)=>`<span class="intro-dot${i===introStep?' active':''}"></span>`).join('');
   const next=document.getElementById('introNext');
-  next.textContent=introStep===INTRO_STEPS.length-1?'Start using Klasora →':'Next →';
+  next.innerHTML=introStep===INTRO_STEPS.length-1?'Start using Klasora':'Next';
+  next.insertAdjacentHTML('beforeend',window.KlasoraIcons.markup('arrow-right'));
 }
 function nextIntro(){if(introStep<INTRO_STEPS.length-1){introStep++;renderIntro();}else finishIntro();}
 function finishIntro(){localStorage.setItem('meno_intro_seen','1');document.getElementById('introOverlay').classList.remove('show');}
@@ -1227,8 +1244,8 @@ async function renderCallsPanel(){
   try{
     const dms=await api('/api/dms');
     allItems=dms;
-    const rows=dms.filter(dm=>getOther(dm)).slice(0,8).map(dm=>{const o=getOther(dm);return `<div class="wa-call-row"><div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}</div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="wa-panel-sub">No recent calls</div></div><button class="wa-action" onclick="startCallFromList('${o._id}','${esc(o.name).replace(/'/g,"&#39;")}','${o.color||'#087e7b'}')">📞</button></div>`;}).join('');
-    document.getElementById('listSec').innerHTML=`<div class="wa-panel"><div class="wa-panel-head"><div><div class="wa-panel-title">Calls</div><div class="wa-panel-sub">Voice and video calls</div></div><button class="wa-action" onclick="showToast('📞','Start a call','Open a chat to call someone')">＋ New call</button></div>${rows||'<div class="wa-empty-card">Your recent calls will appear here.</div>'}</div>`;
+    const rows=dms.filter(dm=>getOther(dm)).slice(0,8).map(dm=>{const o=getOther(dm);return `<div class="wa-call-row"><div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}</div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="wa-panel-sub">No recent calls</div></div><button class="wa-action" aria-label="Call ${esc(o.name)}" onclick="startCallFromList('${o._id}','${esc(o.name).replace(/'/g,"&#39;")}','${o.color||'#087e7b'}')">${window.KlasoraIcons.markup('phone-call')}</button></div>`;}).join('');
+    document.getElementById('listSec').innerHTML=`<div class="wa-panel"><div class="wa-panel-head"><div><div class="wa-panel-title">Calls</div><div class="wa-panel-sub">Voice and video calls</div></div><button class="wa-action" onclick="showToast('📞','Start a call','Open a chat to call someone')">${window.KlasoraIcons.markup('plus')} New call</button></div>${rows||'<div class="wa-empty-card">Your recent calls will appear here.</div>'}</div>`;
   }catch(e){document.getElementById('listSec').innerHTML=`<div class="wa-empty-card">${esc(e.message)}</div>`;}
 }
 function startCallFromList(userId,name,color){
@@ -1261,9 +1278,9 @@ function renderList(items,filter=''){
       const o=getOther(item); if(!o)return;
       div.innerHTML=`<div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}<div class="av-dot dot-off" data-pres="${o._id}"></div></div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
     } else if(item._chatType==='clique'||sideTab==='cliques') {
-      div.innerHTML=`<div class="c-icon" style="background:${item.color||'#087e7b'}22;">${item.emoji||'🔗'}</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">CLIQUE</span></div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
+      div.innerHTML=`<div class="c-icon" style="background:${item.color||'#087e7b'}22;">${window.KlasoraIcons.markup(item.emoji||'link')}</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">CLIQUE</span></div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
     } else {
-      div.innerHTML=`<div class="c-icon" style="background:var(--accent)22;">🎓</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">COURSE</span></div><div class="li-prev">${esc(item.code||item.description||'Private course space').slice(0,38)}</div></div>`;
+      div.innerHTML=`<div class="c-icon" style="background:var(--accent)22;">${window.KlasoraIcons.markup('graduation-cap')}</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">COURSE</span></div><div class="li-prev">${esc(item.code||item.description||'Private course space').slice(0,38)}</div></div>`;
     }
     el.appendChild(div);
   });
@@ -1284,8 +1301,8 @@ async function searchMessages(query){
     list.innerHTML='';
     results.forEach(result=>{
       const row=document.createElement('div'); row.className='list-item'; row.onclick=()=>openSearchResult(result);
-      const preview=result.type==='voice'?'🎙️ Voice note':result.fileName?`📎 ${result.fileName}`:(result.text||'Message');
-      row.innerHTML=`<div class="c-icon" style="background:var(--accent)22;">${result.roomType==='course'?'🎓':result.roomType==='clique'?'🔗':'💬'}</div><div class="li-info"><div class="li-name">${esc(result.roomName)}</div><div class="li-prev"><strong>${esc(result.senderName||'Someone')}:</strong> ${esc(preview).slice(0,48)}</div></div><div class="li-time">${result.createdAt?fmtDate(new Date(result.createdAt)):''}</div>`;
+      const preview=result.type==='voice'?'Voice note':result.fileName?result.fileName:(result.text||'Message');
+      row.innerHTML=`<div class="c-icon" style="background:var(--accent)22;">${window.KlasoraIcons.markup(result.roomType==='course'?'graduation-cap':result.roomType==='clique'?'link':'message-circle')}</div><div class="li-info"><div class="li-name">${esc(result.roomName)}</div><div class="li-prev"><strong>${esc(result.senderName||'Someone')}:</strong> ${esc(preview).slice(0,48)}</div></div><div class="li-time">${result.createdAt?fmtDate(new Date(result.createdAt)):''}</div>`;
       list.appendChild(row);
     });
   }catch(e){list.innerHTML=`<div style="padding:1rem;color:var(--red);font-size:.75rem;">${esc(e.message)}</div>`;}
@@ -1323,13 +1340,13 @@ async function openChat(item){
   const isCourse=activeType==='course';
   if(!isClique&&!isCourse){
     const o=getOther(item); av.textContent=ini(o.name); av.style.background=o.color+'22'; av.style.color=o.color; av.style.borderRadius='50%';
-    document.getElementById('chName').textContent=o.name; document.getElementById('chSub').textContent=o.online?'● Online':'○ Offline';
+    document.getElementById('chName').textContent=o.name; document.getElementById('chSub').innerHTML=`${window.KlasoraIcons.markup('circle')} ${o.online?'Online':'Offline'}`;
     document.getElementById('membersBtn').style.display='none';
     document.getElementById('courseFilesBtn').style.display='none';
     document.getElementById('voiceCallBtn').style.display='flex'; document.getElementById('videoCallBtn').style.display='flex';
     callPeer=o._id; callPeerName=o.name; callPeerColor=o.color||'#087e7b';
   } else {
-    av.textContent=isCourse?'🎓':(item.emoji||'🔗'); av.style.background=(item.color||'#087e7b')+'22'; av.style.color=item.color||'#087e7b'; av.style.borderRadius='12px';
+    av.innerHTML=window.KlasoraIcons.markup(isCourse?'graduation-cap':(item.emoji||'link')); av.style.background=(item.color||'#087e7b')+'22'; av.style.color=item.color||'#087e7b'; av.style.borderRadius='12px';
     document.getElementById('chName').textContent=item.name; document.getElementById('chSub').textContent=isCourse?(item.code||'Private course space'):`${item.members?.length||0} members`;
     document.getElementById('membersBtn').style.display='flex';
     document.getElementById('courseFilesBtn').style.display=isCourse?'flex':'none';
@@ -1354,7 +1371,7 @@ function renderWorkspaceDetails(item){
   const pane=document.getElementById('workspaceDetails');
   if(!pane)return;
   if(!item){
-    pane.innerHTML='<div class="workspace-details-empty"><div class="workspace-details-mark">◈</div><strong>Room details</strong><span>Choose a conversation or course to see its people and helpful shortcuts.</span></div>';
+    pane.innerHTML=`<div class="workspace-details-empty"><div class="workspace-details-mark">${window.KlasoraIcons.markup('layout-dashboard')}</div><strong>Room details</strong><span>Choose a conversation or course to see its people and helpful shortcuts.</span></div>`;
     return;
   }
   const type=item._chatType||activeType;
@@ -1368,8 +1385,9 @@ function renderWorkspaceDetails(item){
   const members=(item.members||[]).slice(0,5).map(member=>`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${esc(ini(member.name))}</span><span>${esc(member.name||'Clique member')}</span></div>`).join('');
   const person=other?`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${esc(ini(other.name))}</span><span>${esc(other.name)}</span></div>`:'';
   const isCliqueAdmin=isClique&&String(item.createdBy||'')===String(myUser._id||'');
-  const actions=isCourse?'<button type="button" class="workspace-detail-action" onclick="showCourseFiles()">▤ <span>Browse course files</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="showMembers()">♙ <span>View classmates</span> <b>→</b></button>':isClique?`<button type="button" class="workspace-detail-action" onclick="showMembers()">♙ <span>View members</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliquePins()">⌖ <span>Pinned messages</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.shareCliqueInvite()">↗ <span>Copy invite link</span> <b>→</b></button>${isCliqueAdmin?'<button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliqueRequests()">✓ <span>Review join requests</span> <b>→</b></button>':''}`:'<button type="button" class="workspace-detail-action" onclick="startCall(\'voice\')">⌕ <span>Start voice call</span> <b>→</b></button><button type="button" class="workspace-detail-action" onclick="startCall(\'video\')">▣ <span>Start video call</span> <b>→</b></button>';
-  pane.innerHTML=`<div class="workspace-details-card"><div class="workspace-detail-emblem">${isCourse?'▤':isClique?esc(item.emoji||'◎'):'◉'}</div><div class="workspace-detail-kicker">${title}</div><h2>${esc(isCourse||isClique?item.name:other?.name||'Conversation')}</h2><p class="workspace-detail-copy">${esc(detail)}</p>${description?`<p class="workspace-detail-description">${esc(description)}</p>`:''}<div class="workspace-detail-section"><div class="workspace-detail-heading">${isCourse?'Classmates':isClique?'People':'Participant'} <span>${memberCount}</span></div>${members||person||'<span class="workspace-detail-muted">Member details are not available.</span>'}</div><div class="workspace-detail-section"><div class="workspace-detail-heading">Quick links</div>${actions}</div></div><div class="workspace-details-tip"><strong>Keep it together</strong><span>Share notes, files, and updates in the right space for your class.</span></div>`;
+  const actions=isCourse?`<button type="button" class="workspace-detail-action" onclick="showCourseFiles()">${window.KlasoraIcons.markup('book-open')} <span>Browse course files</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="showMembers()">${window.KlasoraIcons.markup('user-round')} <span>View classmates</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>`:isClique?`<button type="button" class="workspace-detail-action" onclick="showMembers()">${window.KlasoraIcons.markup('user-round')} <span>View members</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliquePins()">${window.KlasoraIcons.markup('locate-fixed')} <span>Pinned messages</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.shareCliqueInvite()">${window.KlasoraIcons.markup('arrow-up-right')} <span>Copy invite link</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>${isCliqueAdmin?`<button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliqueRequests()">${window.KlasoraIcons.markup('check')} <span>Review join requests</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>`:''}`:`<button type="button" class="workspace-detail-action" onclick="startCall('voice')">${window.KlasoraIcons.markup('phone-call')} <span>Start voice call</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="startCall('video')">${window.KlasoraIcons.markup('video')} <span>Start video call</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>`;
+  const emblem=isCourse?'book-open':isClique?(item.emoji||'users-round'):'users-round';
+  pane.innerHTML=`<div class="workspace-details-card"><div class="workspace-detail-emblem">${window.KlasoraIcons.markup(emblem)}</div><div class="workspace-detail-kicker">${title}</div><h2>${esc(isCourse||isClique?item.name:other?.name||'Conversation')}</h2><p class="workspace-detail-copy">${esc(detail)}</p>${description?`<p class="workspace-detail-description">${esc(description)}</p>`:''}<div class="workspace-detail-section"><div class="workspace-detail-heading">${isCourse?'Classmates':isClique?'People':'Participant'} <span>${memberCount}</span></div>${members||person||'<span class="workspace-detail-muted">Member details are not available.</span>'}</div><div class="workspace-detail-section"><div class="workspace-detail-heading">Quick links</div>${actions}</div></div><div class="workspace-details-tip"><strong>Keep it together</strong><span>Share notes, files, and updates in the right space for your class.</span></div>`;
 }
 
 // ── RENDER MESSAGES ───────────────────────────────────────────
@@ -1377,7 +1395,7 @@ function renderMsgs(msgs,item){
   const c=document.getElementById('messages'); c.innerHTML='';
   const isClique=activeType==='clique';
   const isCourse=activeType==='course';
-  if(!msgs.length){ const n=isClique||isCourse?item.name:getOther(item)?.name; c.innerHTML=`<div class="empty-state"><div class="empty-icon">${isCourse?'🎓':isClique?(item.emoji||'🔗'):'👋'}</div><div class="empty-title">${isClique||isCourse?'Welcome to '+esc(n):esc(n)}</div><div class="empty-sub">${isCourse?'Your private course space starts here!':isClique?'Your clique starts here!':'Say hello!'}</div></div>`; return; }
+  if(!msgs.length){ const n=isClique||isCourse?item.name:getOther(item)?.name; c.innerHTML=`<div class="empty-state"><div class="empty-icon">${window.KlasoraIcons.markup(isCourse?'graduation-cap':isClique?(item.emoji||'link'):'hand')}</div><div class="empty-title">${isClique||isCourse?'Welcome to '+esc(n):esc(n)}</div><div class="empty-sub">${isCourse?'Your private course space starts here!':isClique?'Your clique starts here!':'Say hello!'}</div></div>`; return; }
   let lastDate='', groups=[];
   msgs.forEach((m,i)=>{ const prev=msgs[i-1]; const gap=m.createdAt&&prev?.createdAt&&(new Date(m.createdAt)-new Date(prev.createdAt))>300000; if(!prev||prev.senderId!==m.senderId||gap) groups.push({sid:m.senderId,sName:m.senderName,sColor:m.senderColor,msgs:[m]}); else groups[groups.length-1].msgs.push(m); });
   groups.forEach(g=>{ const isMe=g.sid===myUser._id; const ds=g.msgs[0].createdAt?fmtDate(new Date(g.msgs[0].createdAt)):''; if(ds&&ds!==lastDate){const d=document.createElement('div');d.className='date-div';d.textContent=ds;c.appendChild(d);lastDate=ds;} const gel=document.createElement('div'); gel.className='msg-group '+(isMe?'out':'inc'); g.msgs.forEach((msg,i)=>{ const isLast=i===g.msgs.length-1; buildMsgRow(gel,msg,g,isMe,isLast,isClique||isCourse); }); c.appendChild(gel); });
@@ -1388,21 +1406,21 @@ function buildMsgRow(gel,msg,g,isMe,isLast,isClique){
   const row=document.createElement('div'); row.className='msg-row';
   if(!isMe){ const av=document.createElement('div'); av.className='mavatar'+(isLast?'':' ghost'); if(isLast){av.textContent=ini(g.sName||'?');av.style.background=(g.sColor||'#087e7b')+'22';av.style.color=g.sColor||'#087e7b';} row.appendChild(av); }
   const bubble=document.createElement('div'); bubble.className='bubble'+(msg.type==='ai'?' ai-bubble':''); bubble.dataset.msgid=msg._id;
-  const reactions=EMOJIS.slice(0,6).map(e=>`<button class="react-btn" onclick="doReact('${msg._id}','${e}');closeMessageMenus()">${e}</button>`).join('');
+  const reactions=EMOJIS.slice(0,6).map(({icon})=>`<button class="react-btn" aria-label="React with ${icon}" onclick="doReact('${msg._id}','${icon}');closeMessageMenus()">${window.KlasoraIcons.markup(icon)}</button>`).join('');
   const downloadAction=(msg.type==='file'||msg.type==='image'||msg.type==='voice')&&msg.fileUrl?`<button class="message-menu-download" onclick="downloadMessageFile('${msg.fileUrl}','${msg.fileName||'download'}')">Download</button>`:'';
   const deleteAction=isMe?`<button class="message-menu-delete" onclick="deleteMessage('${msg._id}')">Delete message</button>`:'';
   const pinAction=isClique&&window.KlasoraRefresh?.isCliqueAdmin()?`<button class="message-menu-download" onclick="window.KlasoraRefresh.pinMessage('${msg._id}');closeMessageMenus()">Pin for clique</button>`:'';
   const sLine=(!isMe&&isClique&&isLast)?`<div class="sender-name" style="color:${g.sColor||'var(--accent2)'}">${esc(g.sName||'')}</div>`:'';
   let content='';
   if(msg.type==='image') content=`<img class="img-msg" src="${msg.fileUrl}" alt="${esc(msg.fileName||'image')}" onclick="window.open('${msg.fileUrl}','_blank')">`;
-  else if(msg.type==='voice') content=`<div class="voice-msg"><span>🎙️</span><audio controls src="${msg.fileUrl}"></audio></div>`;
-  else if(msg.type==='file') content=`<a href="${msg.fileUrl}" target="_blank" style="text-decoration:none;color:inherit;"><div class="file-msg"><span class="file-icon">📄</span><div><div class="file-name">${esc(msg.fileName||'File')}</div><div class="file-size">${fmtSize(msg.fileSize)}</div></div></div></a>`;
+  else if(msg.type==='voice') content=`<div class="voice-msg"><span>${window.KlasoraIcons.markup('mic')}</span><audio controls src="${msg.fileUrl}"></audio></div>`;
+  else if(msg.type==='file') content=`<a href="${msg.fileUrl}" target="_blank" style="text-decoration:none;color:inherit;"><div class="file-msg"><span class="file-icon">${window.KlasoraIcons.markup('file-text')}</span><div><div class="file-name">${esc(msg.fileName||'File')}</div><div class="file-size">${fmtSize(msg.fileSize)}</div></div></div></a>`;
   else if(msg.type==='ai'&&msg.quiz) content=renderQuizMessage(msg.quizId,msg.quiz);
-  else if(msg.type==='ai') content=`<div class="ai-tag">🤖 Klasora AI</div>${esc(msg.text)}`;
+  else if(msg.type==='ai') content=`<div class="ai-tag">${window.KlasoraIcons.markup('bot')} Klasora AI</div>${esc(msg.text)}`;
   else content=esc(msg.text);
-  bubble.innerHTML=`<div class="bactions"><button class="message-menu-btn" onclick="toggleMessageMenu(event,this)" title="Message options">⋯</button><div class="message-menu"><div class="message-menu-reactions">${reactions}</div>${downloadAction}${pinAction}${deleteAction}</div></div>${sLine}${content}`;
+  bubble.innerHTML=`<div class="bactions"><button class="message-menu-btn" onclick="toggleMessageMenu(event,this)" title="Message options" aria-label="Message options">${window.KlasoraIcons.markup('ellipsis')}</button><div class="message-menu"><div class="message-menu-reactions">${reactions}</div>${downloadAction}${pinAction}${deleteAction}</div></div>${sLine}${content}`;
   const tEl=document.createElement('div'); tEl.className='mtime'; tEl.textContent=msg.createdAt?fmtTime(new Date(msg.createdAt)):'';
-  if(isMe){ const status=document.createElement('span'); status.className='message-status'; status.dataset.statusFor=msg._id; status.textContent=messageStatus(msg); tEl.appendChild(status); }
+  if(isMe){ const status=document.createElement('span'); status.className='message-status'; status.dataset.statusFor=msg._id; status.innerHTML=messageStatus(msg); tEl.appendChild(status); }
   if(isMe){row.appendChild(tEl);row.appendChild(bubble);}else{row.appendChild(bubble);row.appendChild(tEl);}
   gel.appendChild(row);
   if(msg.reactions&&Object.keys(msg.reactions).length) buildReactionRow(gel,msg);
@@ -1418,14 +1436,14 @@ function appendMessage(msg){
 
 function buildReactionRow(gel,msg){
   const rr=document.createElement('div'); rr.className='reactions'; rr.dataset.rfor=msg._id;
-  Object.entries(msg.reactions||{}).forEach(([em,cnt])=>{ if(!cnt)return; const chip=document.createElement('div'); chip.className='r-chip'; chip.innerHTML=`${em}<span class="r-cnt">${cnt}</span>`; chip.onclick=()=>doReact(msg._id,em); rr.appendChild(chip); });
+  Object.entries(msg.reactions||{}).forEach(([em,cnt])=>{ if(!cnt)return; const chip=document.createElement('div'); chip.className='r-chip'; chip.innerHTML=`${window.KlasoraIcons.markup(em)}<span class="r-cnt">${cnt}</span>`; chip.onclick=()=>doReact(msg._id,em); rr.appendChild(chip); });
   gel.appendChild(rr);
 }
 function refreshReactions(bubble,msg){ let rr=bubble.parentElement.parentElement?.querySelector(`[data-rfor="${msg._id}"]`); if(rr) rr.remove(); if(msg.reactions&&Object.keys(msg.reactions).length) buildReactionRow(bubble.parentElement.parentElement,msg); }
-function messageStatus(msg){ return (msg.readBy||[]).length?'✓✓':msg.deliveredAt?'✓✓':'✓'; }
+function messageStatus(msg){ return window.KlasoraIcons.markup((msg.readBy||[]).length||msg.deliveredAt?'check-check':'check'); }
 function updateMessageStatus(msgId,status,deliveredAt,readBy){
   const el=document.querySelector(`[data-status-for="${msgId}"]`); if(!el)return;
-  el.textContent=status==='read'||(readBy||[]).length?'✓✓':deliveredAt?'✓✓':'✓';
+  el.innerHTML=window.KlasoraIcons.markup(status==='read'||(readBy||[]).length||deliveredAt?'check-check':'check');
   el.classList.toggle('read',status==='read'||(readBy||[]).length>0);
 }
 
@@ -1490,7 +1508,7 @@ function queueAttachment(input){
     pendingAttachmentPreviewUrl=URL.createObjectURL(file);
     thumb.innerHTML=`<img src="${pendingAttachmentPreviewUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`;
   } else {
-    thumb.textContent=file.type==='application/pdf'?'📕':'📄';
+    thumb.innerHTML=window.KlasoraIcons.markup(file.type==='application/pdf'?'file-text':'file');
   }
   document.getElementById('attachmentPreview').classList.add('show');
 }
@@ -1499,7 +1517,7 @@ function clearAttachment(){
   pendingAttachment=null; pendingAttachmentPreviewUrl=null;
   const input=document.getElementById('fileInput'); if(input)input.value='';
   const preview=document.getElementById('attachmentPreview'); if(preview)preview.classList.remove('show');
-  const thumb=document.getElementById('attachmentThumb'); if(thumb)thumb.textContent='📄';
+  const thumb=document.getElementById('attachmentThumb'); if(thumb)thumb.innerHTML=window.KlasoraIcons.markup('file-text');
 }
 async function toggleVoiceRecording(){
   if(mediaRecorder&&mediaRecorder.state==='recording'){
@@ -1527,12 +1545,12 @@ async function toggleVoiceRecording(){
       document.getElementById('voiceAudio').src=voicePreviewUrl;
       document.getElementById('voiceStatus').textContent='Voice note ready';
       document.getElementById('voicePreview').classList.add('show');
-      document.getElementById('voiceBtn').textContent='🎙️';
+      document.getElementById('voiceBtn').innerHTML=window.KlasoraIcons.markup('audio-lines');
       mediaRecorder=null;
     };
     mediaRecorder.start();
-    document.getElementById('voiceBtn').textContent='⏹️';
-    document.getElementById('voiceStatus').textContent='● Recording… click stop';
+    document.getElementById('voiceBtn').innerHTML=window.KlasoraIcons.markup('square');
+    document.getElementById('voiceStatus').innerHTML=`${window.KlasoraIcons.markup('circle')} Recording… click stop`;
   }catch(e){recordingStream?.getTracks().forEach(track=>track.stop());recordingStream=null;showToast('❌','Microphone unavailable','Allow microphone access to record a voice note.');}
 }
 function clearVoiceNote(){
@@ -1543,7 +1561,7 @@ function clearVoiceNote(){
   voicePreviewUrl=null;
   const audio=document.getElementById('voiceAudio'); if(audio){audio.pause();audio.removeAttribute('src');audio.load();}
   document.getElementById('voicePreview')?.classList.remove('show');
-  const button=document.getElementById('voiceBtn'); if(button)button.textContent='🎙️';
+  const button=document.getElementById('voiceBtn'); if(button)button.innerHTML=window.KlasoraIcons.markup('audio-lines');
 }
 async function sendVoiceNote(){
   if(!pendingVoiceBlob||!activeRoomId||!socket)return;
@@ -1597,7 +1615,7 @@ async function askAI(){
     // Also send to room so others see it
     if(activeRoomId&&socket) socket.emit('send_message',{roomId:activeRoomId,text:data.answer,senderName:'Klasora AI',senderColor:'#087e7b',type:'ai'});
   }catch(e){ showToast('🤖','AI error',e.message); }
-  finally{ btn.disabled=false; btn.textContent='Ask →'; }
+  finally{ btn.disabled=false; btn.innerHTML=`Ask ${window.KlasoraIcons.markup('arrow-right')}`; }
 }
 async function generateStudyTool(type){
   if(activeType!=='course'){showToast('🤖','Open a course','Study tools use notes from the active course chat.');return;}
@@ -1614,13 +1632,13 @@ async function generateStudyTool(type){
       studyQuizzes.set(quizId,{items:data.items,answered:new Set(),score:0});
       appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Klasora AI',senderColor:var_accent,quizId,quiz:data.items,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
     }else{
-      appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Klasora AI',senderColor:var_accent,text:`🃏 Flashcards\n\n${text}`,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
+      appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Klasora AI',senderColor:var_accent,text:`Flashcards\n\n${text}`,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
     }
   }catch(e){showToast('🤖','Study tool error',e.message);}
   finally{buttons.forEach(button=>button.disabled=false);}
 }
 function renderQuizMessage(quizId,items){
-  return `<div class="ai-tag">🤖 Klasora AI · ❓ Quiz</div><div data-quiz="${quizId}">${items.map((item,index)=>`<div class="quiz-question" data-question="${index}"><strong>${index+1}. ${esc(item.question)}</strong>${(item.options||[]).map((option,optionIndex)=>`<button class="quiz-option" onclick="answerQuiz('${quizId}',${index},${optionIndex},this)">${esc(option)}</button>`).join('')}<div class="quiz-feedback"></div></div>`).join('')}</div>`;
+  return `<div class="ai-tag"><iconify-icon icon="lucide:bot" aria-hidden="true"></iconify-icon> Klasora AI · <iconify-icon icon="lucide:circle-help" aria-hidden="true"></iconify-icon> Quiz</div><div data-quiz="${quizId}">${items.map((item,index)=>`<div class="quiz-question" data-question="${index}"><strong>${index+1}. ${esc(item.question)}</strong>${(item.options||[]).map((option,optionIndex)=>`<button class="quiz-option" onclick="answerQuiz('${quizId}',${index},${optionIndex},this)">${esc(option)}</button>`).join('')}<div class="quiz-feedback"></div></div>`).join('')}</div>`;
 }
 function answerQuiz(quizId,questionIndex,optionIndex,button){
   const quiz=studyQuizzes.get(quizId); if(!quiz||quiz.answered.has(questionIndex))return;
@@ -1630,7 +1648,7 @@ function answerQuiz(quizId,questionIndex,optionIndex,button){
   const selected=item.options[optionIndex]; const correct=selected===item.answer;
   if(correct){quiz.score++;button.classList.add('correct');}
   else{button.classList.add('wrong');const correctButton=buttons.find(option=>option.textContent===item.answer);correctButton?.classList.add('correct');}
-  question.querySelector('.quiz-feedback').textContent=correct?'Correct! ✅':`Answer: ${item.answer}`;
+  question.querySelector('.quiz-feedback').innerHTML=correct?`Correct! ${window.KlasoraIcons.markup('circle-check')}`:`Answer: ${esc(item.answer)}`;
   if(quiz.answered.size===quiz.items.length){
     const header=document.querySelector(`[data-quiz="${quizId}"]`); const score=document.createElement('div'); score.className='quiz-feedback'; score.textContent=`Score: ${quiz.score}/${quiz.items.length}`; header.appendChild(score);
   }
@@ -1641,13 +1659,13 @@ const var_accent='#087e7b';
 async function loadHomework(){
   const sec=document.getElementById('listSec'); sec.innerHTML='';
   const div=document.createElement('div'); div.className='panel'; sec.appendChild(div);
-  div.innerHTML=`<div class="hw-header"><div class="hw-title">📚 Assignments</div><button class="hw-add-btn" onclick="openModal('hwModal')">+ Add</button></div><div id="hwList"><div class="loading-row"><div class="spinner"></div></div></div>`;
+  div.innerHTML=`<div class="hw-header"><div class="hw-title"><iconify-icon icon="lucide:book-open" aria-hidden="true"></iconify-icon> Assignments</div><button class="hw-add-btn" onclick="openModal('hwModal')"><iconify-icon icon="lucide:plus" aria-hidden="true"></iconify-icon> Add</button></div><div id="hwList"><div class="loading-row"><div class="spinner"></div></div></div>`;
   try{
     const courses=await api('/api/courses'); populateCourseSelects(courses);
     const hw=await api('/api/homework');
     const list=document.getElementById('hwList'); list.innerHTML='';
-    if(!hw.length){list.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem;">No assignments yet! 🎉</div>`;return;}
-    hw.forEach(h=>{ const el=document.createElement('div'); el.className='hw-item'+(h.done?' done':''); el.innerHTML=`<div class="hw-check${h.done?' checked':''}" onclick="toggleHW('${h._id}',${!h.done})">${h.done?'✓':''}</div><div class="hw-body"><div class="hw-name">${esc(h.title)}</div><div class="hw-meta">${h.subject?`<span class="hw-tag" style="background:var(--surface3);color:var(--text2)">${esc(h.subject)}</span>`:''}<span class="hw-tag pri-${h.priority||'medium'}">${h.priority||'medium'}</span>${h.dueDate?`<span class="hw-due">Due ${fmtDate(new Date(h.dueDate))}</span>`:''}</div><button class="hw-add-btn" style="margin-top:.55rem;" onclick="generateHomeworkPlan('${h._id}',this)">✨ Break down</button><div class="hw-plan" style="display:none;"></div></div><button class="hw-del" onclick="deleteHW('${h._id}')">🗑</button>`; list.appendChild(el); });
+    if(!hw.length){list.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem;">No assignments yet! ${window.KlasoraIcons.markup('party-popper')}</div>`;return;}
+    hw.forEach(h=>{ const el=document.createElement('div'); el.className='hw-item'+(h.done?' done':''); el.innerHTML=`<button type="button" class="hw-check${h.done?' checked':''}" aria-label="${h.done?'Mark incomplete':'Mark complete'}" onclick="toggleHW('${h._id}',${!h.done})">${h.done?window.KlasoraIcons.markup('check'):''}</button><div class="hw-body"><div class="hw-name">${esc(h.title)}</div><div class="hw-meta">${h.subject?`<span class="hw-tag" style="background:var(--surface3);color:var(--text2)">${esc(h.subject)}</span>`:''}<span class="hw-tag pri-${h.priority||'medium'}">${h.priority||'medium'}</span>${h.dueDate?`<span class="hw-due">Due ${fmtDate(new Date(h.dueDate))}</span>`:''}</div><button class="hw-add-btn" style="margin-top:.55rem;" onclick="generateHomeworkPlan('${h._id}',this)">${window.KlasoraIcons.markup('sparkles')} Break down</button><div class="hw-plan" style="display:none;"></div></div><button class="hw-del" aria-label="Delete assignment" onclick="deleteHW('${h._id}')">${window.KlasoraIcons.markup('trash-2')}</button>`; list.appendChild(el); });
   }catch(e){console.error(e);}
 }
 async function addHomework(){
@@ -1664,7 +1682,7 @@ async function generateHomeworkPlan(id,button){
     const data=await api('/api/ai/homework-plan','POST',{homeworkId:id});
     plan.innerHTML=`<div style="font-size:.78rem;color:var(--text2);margin-top:.55rem;"><strong>${esc(data.summary)}</strong><ol style="margin:.4rem 0 0 1.1rem;padding:0;">${data.steps.map(step=>`<li style="margin:.25rem 0;"><strong>${esc(step.title)}</strong>${step.detail?` - ${esc(step.detail)}`:''}</li>`).join('')}</ol>${data.tip?`<div style="margin-top:.45rem;color:var(--accent2);">Tip: ${esc(data.tip)}</div>`:''}</div>`;
   }catch(e){plan.innerHTML=`<div style="margin-top:.5rem;color:var(--red);font-size:.75rem;">${esc(e.message)}</div>`;}
-  finally{button.disabled=false;button.textContent='✨ Break down';}
+  finally{button.disabled=false;button.innerHTML=`${window.KlasoraIcons.markup('sparkles')} Break down`;}
 }
 function populateCourseSelects(courses){
   ['hwCourse','noteCourse'].forEach(id=>{
@@ -1677,7 +1695,7 @@ async function loadNotes(){
   const sec=document.getElementById('listSec'); sec.innerHTML='';
   const courses=await api('/api/courses'); populateCourseSelects(courses);
   const panel=document.createElement('div'); panel.className='panel'; sec.appendChild(panel);
-  panel.innerHTML=`<div class="hw-header"><div class="hw-title">📝 Course Notes</div><select class="modal-sel" id="notesFilter" style="width:auto;margin:0"><option value="">Choose a course</option>${courses.map(c=>`<option value="${c._id}">${esc(c.name)}</option>`).join('')}</select></div><div id="notesList"><div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem;">Choose a course to view notes.</div></div>`;
+  panel.innerHTML=`<div class="hw-header"><div class="hw-title"><iconify-icon icon="lucide:notebook-pen" aria-hidden="true"></iconify-icon> Course Notes</div><select class="modal-sel" id="notesFilter" style="width:auto;margin:0"><option value="">Choose a course</option>${courses.map(c=>`<option value="${c._id}">${esc(c.name)}</option>`).join('')}</select></div><div id="notesList"><div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem;">Choose a course to view notes.</div></div>`;
   document.getElementById('notesFilter').onchange=()=>renderNotes(document.getElementById('notesFilter').value);
 }
 async function renderNotes(courseId){
@@ -1686,7 +1704,7 @@ async function renderNotes(courseId){
   try{
     const notes=await api(`/api/notes?courseId=${encodeURIComponent(courseId)}`);
     list.innerHTML=notes.length?'':'<div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem;">No notes yet.</div>';
-    notes.forEach(n=>{const el=document.createElement('div');el.className='hw-item';el.innerHTML=`<div class="hw-body"><div class="hw-name">${esc(n.title)}</div><div class="hw-meta"><span class="hw-due">${fmtDate(new Date(n.updatedAt||n.createdAt))}</span></div><div style="font-size:.78rem;color:var(--text2);margin-top:.35rem;white-space:pre-wrap;">${esc(n.content)}</div></div><button class="hw-del" onclick="deleteNote('${n._id}','${courseId}')">🗑</button>`;list.appendChild(el);});
+    notes.forEach(n=>{const el=document.createElement('div');el.className='hw-item';el.innerHTML=`<div class="hw-body"><div class="hw-name">${esc(n.title)}</div><div class="hw-meta"><span class="hw-due">${fmtDate(new Date(n.updatedAt||n.createdAt))}</span></div><div style="font-size:.78rem;color:var(--text2);margin-top:.35rem;white-space:pre-wrap;">${esc(n.content)}</div></div><button class="hw-del" aria-label="Delete note" onclick="deleteNote('${n._id}','${courseId}')">${window.KlasoraIcons.markup('trash-2')}</button>`;list.appendChild(el);});
   }catch(e){list.innerHTML=`<div style="padding:1rem;color:var(--red)">${esc(e.message)}</div>`;}
 }
 async function addNote(){
@@ -1702,7 +1720,7 @@ async function renderPomodoro(){
   try{ const stats=await api('/api/pomodoro/stats'); pomState.sessToday=stats.sessionsToday; pomState.sessAll=stats.totalSessions; }catch{}
   const wrap=document.createElement('div'); wrap.className='pom-wrap'; sec.appendChild(wrap);
   wrap.innerHTML=`
-    <div class="pom-title">🍅 Focus Timer</div>
+    <div class="pom-title"><iconify-icon icon="lucide:timer" aria-hidden="true"></iconify-icon> Focus Timer</div>
     <div class="pom-sub">Stay locked in with Pomodoro</div>
     <div class="pom-modes">
       <button class="pom-mode active" id="pm-focus" onclick="setPomMode('focus')">Focus 25m</button>
@@ -1717,8 +1735,8 @@ async function renderPomodoro(){
       <div class="pom-time"><div class="pom-digits" id="pomTime">${fmtPom(pomState.secs)}</div><div class="pom-label" id="pomLabel">FOCUS</div></div>
     </div>
     <div class="pom-btns">
-      <button class="pom-btn start" id="pomStartBtn" onclick="togglePom()">▶ Start</button>
-      <button class="pom-btn reset" onclick="resetPom()">↺ Reset</button>
+      <button class="pom-btn start" id="pomStartBtn" onclick="togglePom()"><iconify-icon icon="lucide:play" aria-hidden="true"></iconify-icon> Start</button>
+      <button class="pom-btn reset" onclick="resetPom()"><iconify-icon icon="lucide:rotate-ccw" aria-hidden="true"></iconify-icon> Reset</button>
     </div>
     <div class="pom-stats">
       <div><div class="pom-stat-num" id="pomToday">${pomState.sessToday}</div><div class="pom-stat-lbl">TODAY</div></div>
@@ -1727,9 +1745,44 @@ async function renderPomodoro(){
   `;
   updatePomRing();
 }
-function setPomMode(m){ pomState.mode=m; pomState.running=false; clearInterval(pomState.interval); pomState.secs=POM_MODES[m]; pomState.total=POM_MODES[m]; document.querySelectorAll('.pom-mode').forEach(el=>el.classList.toggle('active',el.id===`pm-${m}`)); updatePomDisplay(); document.getElementById('pomStartBtn').textContent='▶ Start'; document.getElementById('pomLabel').textContent=m.toUpperCase(); }
-function togglePom(){ pomState.running=!pomState.running; document.getElementById('pomStartBtn').textContent=pomState.running?'⏸ Pause':'▶ Start'; if(pomState.running){ pomState.interval=setInterval(async()=>{ pomState.secs--; updatePomDisplay(); if(pomState.secs<=0){ clearInterval(pomState.interval); pomState.running=false; document.getElementById('pomStartBtn').textContent='▶ Start'; if(pomState.mode==='focus'){ try{const s=await api('/api/pomodoro/complete','POST');pomState.sessToday=s.sessionsToday;pomState.sessAll=(document.getElementById('pomAll')?parseInt(document.getElementById('pomAll').textContent)||0:0)+1;document.getElementById('pomToday').textContent=pomState.sessToday;document.getElementById('pomAll').textContent=pomState.sessAll;}catch{} showToast('🎉','Focus session complete!','Great work! Take a break.'); } setPomMode(pomState.mode==='focus'?'short':'focus'); } },1000); } else clearInterval(pomState.interval); }
-function resetPom(){ clearInterval(pomState.interval); pomState.running=false; pomState.secs=POM_MODES[pomState.mode]; document.getElementById('pomStartBtn').textContent='▶ Start'; updatePomDisplay(); }
+function setPomMode(m){ pomState.mode=m; pomState.running=false; clearInterval(pomState.interval); pomState.secs=POM_MODES[m]; pomState.total=POM_MODES[m]; document.querySelectorAll('.pom-mode').forEach(el=>el.classList.toggle('active',el.id===`pm-${m}`)); updatePomDisplay(); document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; document.getElementById('pomLabel').textContent=m.toUpperCase(); }
+function notifyTimerSoundFailure(error){
+  console.warn('Timer sound unavailable:',error);
+  showToast('volume-x','Timer sound unavailable','Check your browser sound settings and try again.');
+}
+function prepareTimerSound(){
+  window.KlasoraTimerSound?.prepare().then(supported=>{
+    if(!supported) showToast('volume-x','Timer sound unavailable','This browser does not support audio notifications.');
+  }).catch(notifyTimerSoundFailure);
+}
+function playTimerSound(){
+  window.KlasoraTimerSound?.beep().then(played=>{
+    if(!played) showToast('volume-x','Timer sound unavailable','This browser does not support audio notifications.');
+  }).catch(notifyTimerSoundFailure);
+}
+function togglePom(){
+  pomState.running=!pomState.running;
+  document.getElementById('pomStartBtn').innerHTML=pomState.running?`${window.KlasoraIcons.markup('pause')} Pause`:`${window.KlasoraIcons.markup('play')} Start`;
+  if(pomState.running){
+    prepareTimerSound();
+    pomState.interval=setInterval(async()=>{
+      pomState.secs--;
+      updatePomDisplay();
+      if(pomState.secs<=0){
+        clearInterval(pomState.interval);
+        pomState.running=false;
+        document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`;
+        playTimerSound();
+        if(pomState.mode==='focus'){
+          try{const s=await api('/api/pomodoro/complete','POST');pomState.sessToday=s.sessionsToday;pomState.sessAll=(document.getElementById('pomAll')?parseInt(document.getElementById('pomAll').textContent)||0:0)+1;document.getElementById('pomToday').textContent=pomState.sessToday;document.getElementById('pomAll').textContent=pomState.sessAll;}catch{}
+          showToast('party-popper','Focus session complete!','Great work! Take a break.');
+        }
+        setPomMode(pomState.mode==='focus'?'short':'focus');
+      }
+    },1000);
+  }else clearInterval(pomState.interval);
+}
+function resetPom(){ clearInterval(pomState.interval); pomState.running=false; pomState.secs=POM_MODES[pomState.mode]; document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; updatePomDisplay(); }
 function updatePomDisplay(){ const el=document.getElementById('pomTime'); if(el)el.textContent=fmtPom(pomState.secs); updatePomRing(); }
 function updatePomRing(){ const el=document.getElementById('pomProg'); if(!el)return; const circ=2*Math.PI*80; const offset=circ-(pomState.secs/pomState.total)*circ; el.style.strokeDashoffset=offset; }
 function fmtPom(s){ return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
@@ -1770,7 +1823,7 @@ function urlBase64ToUint8Array(b64){const p='='.repeat((4-b64.length%4)%4);const
 
 // ── TOAST ─────────────────────────────────────────────────────
 let toastTimer=null;
-function showToast(icon,title,msg){ const t=document.getElementById('toast'); document.getElementById('toastIcon').textContent=icon; document.getElementById('toastTitle').textContent=title; document.getElementById('toastMsg').textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3500); }
+function showToast(icon,title,msg){ const t=document.getElementById('toast'); document.getElementById('toastIcon').innerHTML=window.KlasoraIcons.markup(icon); document.getElementById('toastTitle').textContent=title; document.getElementById('toastMsg').textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3500); }
 function notifyBrowserAlert(title,body,url){
   if(!document.hidden||!window.KlasoraBridge?.notificationsEnabled||!('Notification'in window)||Notification.permission!=='granted')return;
   const notification=new Notification(title,{body,icon:'/klasora-logo.png',data:{url}});
@@ -1811,7 +1864,7 @@ async function handleIncomingCall(data){
   callLogId=window.KlasoraRefresh?.recordCall({userId:callPeer,name:callPeerName,mode:callType,direction:'incoming',status:'missed'})||null;
   const inc=document.getElementById('incomingCall'); inc.classList.add('show');
   document.getElementById('incName').textContent=callPeerName;
-  document.getElementById('incType').textContent=data.type==='video'?'📹 Video call':'📞 Voice call';
+  document.getElementById('incType').innerHTML=`${window.KlasoraIcons.markup(data.type==='video'?'video':'phone-call')} ${data.type==='video'?'Video call':'Voice call'}`;
   const av=document.getElementById('incAvatar'); av.textContent=ini(callPeerName); av.style.background=callPeerColor+'22'; av.style.color=callPeerColor;
   window._pendingOffer=data.offer;
 }
@@ -1871,9 +1924,9 @@ function endCall(sendSignal=true,status){
   if(sendSignal&&peer&&roomId) socket?.emit('call_end',{to:peer,roomId});
   callPeer=null; callRoomId=null; callDirection=null;
 }
-function toggleMute(){ muted=!muted; localStream?.getAudioTracks().forEach(t=>t.enabled=!muted); const button=document.getElementById('muteBtn'); button.textContent=muted?'🔇':'🎙'; button.setAttribute('aria-pressed',String(muted)); button.title=muted?'Unmute microphone':'Mute microphone'; }
-function toggleSpeaker(){ speakerMuted=!speakerMuted; const remote=document.getElementById('remoteVideo'); remote.muted=speakerMuted; const button=document.getElementById('speakerBtn'); button.setAttribute('aria-pressed',String(!speakerMuted)); button.title=speakerMuted?'Turn speaker on':'Turn speaker off'; }
-function toggleCamera(){ const track=localStream?.getVideoTracks()[0]; if(!track)return; track.enabled=!track.enabled; const button=document.getElementById('cameraBtn'); button.setAttribute('aria-pressed',String(!track.enabled)); button.title=track.enabled?'Turn camera off':'Turn camera on'; }
+function toggleMute(){ muted=!muted; localStream?.getAudioTracks().forEach(t=>t.enabled=!muted); const button=document.getElementById('muteBtn'); button.innerHTML=window.KlasoraIcons.markup(muted?'mic-off':'mic'); button.setAttribute('aria-pressed',String(muted)); button.title=muted?'Unmute microphone':'Mute microphone'; }
+function toggleSpeaker(){ speakerMuted=!speakerMuted; const remote=document.getElementById('remoteVideo'); remote.muted=speakerMuted; const button=document.getElementById('speakerBtn'); button.innerHTML=window.KlasoraIcons.markup(speakerMuted?'volume-x':'volume-2'); button.setAttribute('aria-pressed',String(!speakerMuted)); button.title=speakerMuted?'Turn speaker on':'Turn speaker off'; }
+function toggleCamera(){ const track=localStream?.getVideoTracks()[0]; if(!track)return; track.enabled=!track.enabled; const button=document.getElementById('cameraBtn'); button.innerHTML=window.KlasoraIcons.markup(track.enabled?'video':'video-off'); button.setAttribute('aria-pressed',String(!track.enabled)); button.title=track.enabled?'Turn camera off':'Turn camera on'; }
 
 // ── DM / CLIQUE CREATION ──────────────────────────────────────
 async function startDM(){
@@ -1908,7 +1961,7 @@ async function createCourse(){
     ['courseName','courseCode','courseDescription'].forEach(id=>document.getElementById(id).value='');
   }catch(e){err.textContent=e.message;err.style.display='block';}
 }
-function buildCliqueEmojiGrid(){ const g=document.getElementById('cEmojiGrid'); g.innerHTML=''; CLIQUE_EMOJIS.forEach((e,i)=>{const el=document.createElement('div');el.className='eg-opt'+(i===0?' selected':'');el.textContent=e;el.onclick=()=>{selCliqueEmoji=e;document.querySelectorAll('.eg-opt').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');};g.appendChild(el);}); }
+function buildCliqueEmojiGrid(){ const g=document.getElementById('cEmojiGrid'); g.innerHTML=''; CLIQUE_ICONS.forEach((icon,i)=>{const el=document.createElement('button');el.type='button';el.className='eg-opt'+(i===0?' selected':'');el.setAttribute('aria-label',`Clique icon ${i+1}`);el.innerHTML=window.KlasoraIcons.markup(icon);el.onclick=()=>{selCliqueEmoji=icon;document.querySelectorAll('.eg-opt').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');};g.appendChild(el);}); }
 
 // ── MEMBERS ───────────────────────────────────────────────────
 async function showMembers(){ const item=allItems.find(x=>x._id===activeId);if(!item)return; document.getElementById('membersCliqueName').textContent=item.name; const ml=document.getElementById('membersList'); ml.innerHTML=`<div class="loading-row"><div class="spinner"></div></div>`; const canInvite=activeType==='course'||String(item.createdBy||'')===String(myUser._id||''); document.getElementById('addMemberEmail').hidden=!canInvite; document.querySelector('#membersModal .modal-acts .mbtn.pri').hidden=!canInvite; openModal('membersModal'); try{const members=activeType==='course'?(await api(`/api/courses/${item._id}`)).members||[]:await api(`/api/cliques/${item._id}/members`);ml.innerHTML='';members.forEach(p=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:0.7rem;padding:0.5rem 0;border-bottom:1px solid var(--border);';row.innerHTML=`<div class="avatar" style="background:${p.color||'#087e7b'}22;color:${p.color||'#087e7b'};width:32px;height:32px;font-size:0.72rem;">${ini(p.name)}</div><div><div style="font-size:0.81rem;font-weight:600;">${esc(p.name)}</div></div>`;ml.appendChild(row);});}catch(e){ml.textContent=e.message;} }
@@ -1946,7 +1999,7 @@ async function loadCourseFiles(){
     list.innerHTML='';
     files.forEach(file=>{
       const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:.6rem;padding:.65rem 0;border-bottom:1px solid var(--border);';
-      row.innerHTML=`<div style="font-size:1.2rem;">📄</div><div style="flex:1;min-width:0;"><div style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(file.name)}</div><div style="font-size:.65rem;color:var(--text3);">${fmtSize(file.size)}</div></div><button class="mbtn sec" style="padding:.35rem .55rem;" onclick="openCourseFile('${file._id}')">Open</button>${isOwner?`<button class="mbtn sec" style="padding:.35rem .55rem;color:var(--red);" onclick="deleteCourseFile('${file._id}')">Delete</button>`:''}`;
+      row.innerHTML=`<div style="font-size:1.2rem;">${window.KlasoraIcons.markup('file-text')}</div><div style="flex:1;min-width:0;"><div style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(file.name)}</div><div style="font-size:.65rem;color:var(--text3);">${fmtSize(file.size)}</div></div><button class="mbtn sec" style="padding:.35rem .55rem;" onclick="openCourseFile('${file._id}')">Open</button>${isOwner?`<button class="mbtn sec" style="padding:.35rem .55rem;color:var(--red);" onclick="deleteCourseFile('${file._id}')">Delete</button>`:''}`;
       list.appendChild(row);
     });
   }catch(e){list.innerHTML=`<div style="padding:1rem;color:var(--red);font-size:.78rem;">${esc(e.message)}</div>`;}
@@ -1982,7 +2035,7 @@ async function deleteCourseFile(fileId){
 }
 
 // ── EMOJI PICKER ──────────────────────────────────────────────
-function buildEp(){ const p=document.getElementById('ep'); EMOJIS.forEach(e=>{const b=document.createElement('span');b.className='ep-e';b.textContent=e;b.onclick=()=>{document.getElementById('msgInp').value+=e;toggleEp();};p.appendChild(b);}); }
+function buildEp(){ const p=document.getElementById('ep'); EMOJIS.forEach(({icon,value})=>{const b=document.createElement('button');b.type='button';b.className='ep-e';b.setAttribute('aria-label',`Insert ${value}`);b.innerHTML=window.KlasoraIcons.markup(icon);b.onclick=()=>{document.getElementById('msgInp').value+=value;toggleEp();};p.appendChild(b);}); }
 function toggleEp(){ document.getElementById('ep').classList.toggle('show'); }
 document.addEventListener('click',e=>{
   if(!e.target.closest('.i-btn')&&!e.target.closest('.ep')) document.getElementById('ep')?.classList.remove('show');
