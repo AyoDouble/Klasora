@@ -12,6 +12,7 @@ const path       = require('path');
 const multer     = require('multer');
 const webpush    = require('web-push');
 const { getAuthRedirectUrl } = require('./auth-redirect');
+const { createCommunityPostHandlers } = require('./community-posts');
 
 const app    = express();
 const server = http.createServer(app);
@@ -292,7 +293,7 @@ const publicCliqueSummary = clique => ({
   _id: clique._id,
   name: clique.name,
   description: clique.description || '',
-  emoji: clique.emoji || '◉',
+  emoji: clique.emoji || 'users-round',
   color: clique.color || '#087e7b',
   visibility: clique.visibility === 'public' ? 'public' : 'private',
   memberCount: Array.isArray(clique.members) ? clique.members.length : 0
@@ -362,6 +363,13 @@ app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ backendUrl: publicBackendUrl });
 });
+
+const communityPostHandlers = createCommunityPostHandlers({ supabase, io });
+app.get('/api/posts', auth, communityPostHandlers.list);
+app.post('/api/posts', auth, communityPostHandlers.create);
+app.get('/api/posts/:postId/comments', auth, communityPostHandlers.listComments);
+app.post('/api/posts/:postId/comments', auth, communityPostHandlers.createComment);
+app.put('/api/posts/:postId/reaction', auth, communityPostHandlers.setReaction);
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -762,7 +770,7 @@ app.post('/api/cliques', auth, async (req, res) => {
     }
     const members = [...new Set([req.userId.toString(), ...uniqueMemberIds])];
     const clique = await Clique.create({
-      name, description, visibility, emoji: req.body.emoji || '🔗',
+      name, description, visibility, emoji: req.body.emoji || 'users-round',
       color: req.body.color || '#087e7b', members, createdBy: req.userId
     });
     clique.members = await hydrateMembers(clique.members || []);

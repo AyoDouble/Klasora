@@ -74,6 +74,8 @@
 .refresh-nav button:hover { color: var(--refresh-ink); background: var(--refresh-bg); }
 .refresh-nav button.active { color: var(--refresh-accent); background: var(--refresh-accent-soft); }
 .refresh-nav-icon { width: 20px; font-size: 16px; text-align: center; }
+.refresh-nav-icon iconify-icon { width: 18px; height: 18px; }
+.theme-sun-icon { color: #f3b51b; }
 .refresh-settings-link { display:flex; align-items:center; gap:10px; width:100%; min-height:38px; margin-top:12px; padding:0 10px; border:1px solid var(--refresh-line); border-radius:10px; color:var(--refresh-muted); background:var(--refresh-card); font-size:11px; font-weight:700; text-align:left; cursor:pointer; }
 .refresh-settings-link:hover { border-color:var(--refresh-accent); color:var(--refresh-accent); background:var(--refresh-accent-soft); }
 .refresh-settings-link span { flex:1; }
@@ -126,10 +128,19 @@
   transition: .18s ease;
 }
 .refresh-icon-btn { width: 36px; padding: 0; font-size: 14px; }
+.refresh-icon-btn iconify-icon,.refresh-settings-icon iconify-icon,.refresh-preference-icon iconify-icon { width: 1.15em; height: 1.15em; }
 .refresh-secondary:hover,.refresh-icon-btn:hover { border-color: var(--refresh-accent); }
 .refresh-primary { border-color: transparent; color: #fff; background: linear-gradient(110deg,#0b8d86,#08747b); box-shadow: 0 7px 17px rgba(7,112,113,.2); }
 .refresh-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 23px rgba(7,112,113,.3); }
 .refresh-danger { color: #da5b69; }
+.refresh-icon-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.refresh-clique-icon-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 7px; }
+.refresh-clique-icon-option { position: relative; cursor: pointer; }
+.refresh-clique-icon-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.refresh-clique-icon-option span { display: grid; min-height: 60px; place-items: center; gap: 4px; padding: 7px 3px; border: 1px solid var(--refresh-line); border-radius: 9px; color: var(--refresh-muted); font-size: 17px; }
+.refresh-clique-icon-option small { font-size: 8px; line-height: 1.1; text-align: center; }
+.refresh-clique-icon-option input:checked + span { border-color: var(--refresh-accent); color: var(--refresh-accent); background: var(--refresh-accent-soft); }
+.refresh-clique-icon-option input:focus-visible + span { outline: 2px solid var(--refresh-accent); outline-offset: 2px; }
 .refresh-content { width: min(1190px,100%); margin: 0 auto; padding: 34px 36px 60px; }
 .refresh-page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .refresh-eyebrow { color: var(--refresh-accent); font-size: 9px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }

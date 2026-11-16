@@ -21,6 +21,10 @@ Klasora is a real-time student social and study app built for university student
 - Peer-to-peer voice and video calls
 - 24-hour Status updates
 
+### Campus feed
+- Shared text posts with replies and reactions, persisted in Supabase and delivered to connected users in real time
+- Photo posts are not supported yet; older browser-only posts are not automatically published
+
 ### Courses and study tools
 - Private course spaces with invitations for existing Klasora users
 - Course chat, notes, file folders, and private file storage
@@ -83,7 +87,7 @@ npm install
 3. Copy your project URL and anon/service keys from the Supabase dashboard.
 
 The schema creates private `course-files`, `chat-files`, and `profile-images` Storage buckets. Course documents, chat attachments, voice notes, and compressed profile pictures are uploaded through the authenticated server and are not stored on the application filesystem.
-For an existing project, rerun `supabase/schema.sql` to add clique visibility, join-request, and pinned-message storage. Existing cliques default to private so they are not exposed by public discovery. Clique creators are the admins for approvals and pins; the server also checks clique membership before allowing room access and message actions.
+For an existing project, rerun `supabase/schema.sql` after pulling updates to create any newly added tables, including the shared community posts, replies, and reactions. Existing cliques default to private so they are not exposed by public discovery. Clique creators are the admins for approvals and pins; the server also checks clique membership before allowing room access and message actions.
 4. In Supabase **Authentication → URL Configuration**, set the Site URL to your
    production URL, `https://klasora.vercel.app`. Add `https://klasora.vercel.app/**`
    and `http://localhost:3000/**` to Redirect URLs. For Vercel previews, add an exact
@@ -217,7 +221,7 @@ For the split Vercel/Railway deployment below, configure `JWT_SECRET` and
 Vercel Functions cannot keep the Socket.IO connection alive. To use Vercel for the
 frontend while keeping chat, presence, calls, and API requests available:
 
-1. Deploy the repository to Railway and generate a public HTTPS domain.
+1. Apply the latest `supabase/schema.sql` in the Supabase SQL Editor, then deploy the repository to Railway and generate a public HTTPS domain.
 2. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `JWT_SECRET`,
    and `APP_URL=https://klasora.vercel.app` on Railway. Use the same `JWT_SECRET` on
    both hosts.
@@ -227,7 +231,8 @@ frontend while keeping chat, presence, calls, and API requests available:
    configuration.
 4. Keep Supabase service-role credentials on Railway; the Vercel frontend reads the
    public backend origin from `/api/config` and sends authenticated API and Socket.IO
-   traffic to Railway. Redeploy both services after configuration changes.
+   traffic to Railway. The shared community feed also needs the new tables from the
+   schema migration. Redeploy both services after configuration changes.
 5. In Supabase **Authentication → URL Configuration**, keep the Vercel URL as the Site
    URL and allow it in Redirect URLs. Confirm the email templates use
    `{{ .ConfirmationURL }}` and verify registration and password reset from the deployed
