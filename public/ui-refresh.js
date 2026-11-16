@@ -17,7 +17,10 @@
   const state = {
     route: 'feed',
     posts: [],
+    localPosts: [],
     comments: [],
+    seenCommentIds: new Set(),
+    feedRequestId: 0,
     cliques: [],
     dms: [],
     handledCliqueInvite: false,
@@ -194,8 +197,10 @@
 
   function renderFeed() {
     const current = user();
-    const posts = localRead('posts');
     const firstName = (current.name || 'there').split(' ')[0];
+    const requestId = ++state.feedRequestId;
+    const savedPosts = localRead('posts');
+    state.localPosts = (Array.isArray(savedPosts) ? savedPosts : []).map(post => ({ ...post, localOnly: true }));
     content.innerHTML = `
       ${pageHeading('Your campus, closer', `Good to see you, ${firstName}`, 'Ideas, study wins, and campus conversations — shared with your circle.', '<button class="refresh-primary" type="button" data-action="compose">＋ Share a thought</button>')}
       <div class="refresh-grid refresh-feed-layout">
@@ -203,7 +208,7 @@
           <button class="refresh-composer" type="button" data-action="compose"><div class="refresh-avatar">${initials(current.name)}</div><div class="refresh-composer-copy">What would you like to share with your campus?</div><span class="refresh-primary">Create post</span></button>
           <div class="refresh-composer-hint"><span>✦ Campus moments</span><span>▧ Study resources</span><span>⌁ Questions</span></div>
           <div style="height:16px"></div>
-          ${posts.length ? posts.slice().reverse().map(postCard).join('') : `<div class="refresh-empty"><div class="refresh-empty-icon">✦</div><strong>Your campus feed starts here</strong><p>Share a study win, ask a question, or start a conversation. Posts are saved in this browser until community sharing is connected.</p><div style="margin-top:14px"><button class="refresh-primary" type="button" data-action="compose">Write your first post</button></div></div>`}
+          <div class="refresh-loading">Loading campus posts…</div>
         </section>
         <aside class="refresh-side-stack">
           <div class="refresh-card refresh-capsule-card"><div class="refresh-capsule-label">A little focus goes far</div><div class="refresh-capsule-title">Start a study capsule</div><div class="refresh-capsule-copy">Choose your pace, settle in, and give your next task a little space.</div><button class="refresh-secondary" type="button" data-route="focus">Open study capsule →</button></div>
@@ -211,10 +216,29 @@
           <div class="refresh-card refresh-card-pad"><div class="refresh-section-head"><h2>Stay connected</h2><button class="refresh-text-btn" data-route="cliques">Open Cliques</button></div><p class="refresh-note" style="margin-top:0">Keep group conversations and direct messages together in your Cliques space.</p><button class="refresh-secondary" style="width:100%;margin-top:12px" type="button" data-route="courses">Browse courses</button></div>
         </aside>
       </div>`;
+    api('/api/posts').then(posts => {
+      if (requestId !== state.feedRequestId || state.route !== 'feed') return;
+      state.posts = posts;
+      renderFeedPosts(posts);
+    }).catch(error => {
+      if (requestId !== state.feedRequestId || state.route !== 'feed') return;
+      content.querySelector('.refresh-feed-layout section').innerHTML = `<div class="refresh-empty"><strong>Could not load campus posts</strong><p>${escapeHtml(error.message)}</p><button class="refresh-secondary" type="button" data-action="retry-feed">Try again</button></div>${state.localPosts.length ? `<div class="refresh-section-head" style="margin:22px 0 12px"><h2>Older posts saved on this browser</h2></div><p class="refresh-note">These posts are visible only to you and have not been shared with campus.</p>${state.localPosts.map(post => postCard(post)).join('')}` : ''}`;
+    });
+  }
+
+  function renderFeedPosts(posts) {
+    const section = content?.querySelector('.refresh-feed-layout section');
+    if (!section || state.route !== 'feed') return;
+    section.innerHTML = `
+      <button class="refresh-composer" type="button" data-action="compose"><div class="refresh-avatar">${initials(user().name)}</div><div class="refresh-composer-copy">What would you like to share with your campus?</div><span class="refresh-primary">Create post</span></button>
+      <div class="refresh-composer-hint"><span>✦ Campus moments</span><span>▧ Study resources</span><span>⌁ Questions</span></div>
+      <div style="height:16px"></div>
+      ${posts.length ? posts.map(postCard).join('') : `<div class="refresh-empty"><div class="refresh-empty-icon">✦</div><strong>Your campus feed starts here</strong><p>Share a study win, ask a question, or start a conversation with your campus.</p><div style="margin-top:14px"><button class="refresh-primary" type="button" data-action="compose">Write your first post</button></div></div>`}
+      ${state.localPosts.length ? `<div class="refresh-section-head" style="margin:22px 0 12px"><h2>Older posts saved on this browser</h2></div><p class="refresh-note">These posts are visible only to you and have not been shared with campus.</p>${state.localPosts.map(post => postCard(post)).join('')}` : ''}`;
   }
 
   function postCard(post) {
-    return `<article class="refresh-card refresh-post" data-open-post="${escapeHtml(post.id)}"><div class="refresh-post-head"><div class="refresh-avatar">${escapeHtml(post.initials)}</div><div class="refresh-post-user"><strong>${escapeHtml(post.name)}</strong><span>${escapeHtml(post.when || 'Just now')}</span></div><span class="refresh-post-tag">${escapeHtml(post.category || 'Campus')}</span></div><p class="refresh-post-text">${escapeHtml(post.text)}</p>${postMedia(post)}${postReactionBar(post)}<div class="refresh-post-actions"><button type="button" class="refresh-text-btn" data-action="open-post" data-id="${escapeHtml(post.id)}">◌ ${post.commentCount || 0} ${post.category === 'Questions' ? 'answers' : 'replies'}</button><span class="refresh-note" style="margin:0 0 0 auto">Saved on this device</span></div></article>`;
+    return `<article class="refresh-card refresh-post" data-open-post="${escapeHtml(post.id)}"><div class="refresh-post-head"><div class="refresh-avatar">${escapeHtml(post.initials)}</div><div class="refresh-post-user"><strong>${escapeHtml(post.name)}</strong><span>${escapeHtml(post.localOnly ? post.when || 'Saved on this browser' : fmtConversationTime(post.createdAt) || 'Just now')}</span></div><span class="refresh-post-tag">${escapeHtml(post.category || 'Campus')}</span></div><p class="refresh-post-text">${escapeHtml(post.text)}</p>${postMedia(post)}${postReactionBar(post)}<div class="refresh-post-actions"><button type="button" class="refresh-text-btn" data-action="open-post" data-id="${escapeHtml(post.id)}">◌ ${post.commentCount || 0} ${post.category === 'Questions' ? 'answers' : 'replies'}</button><span class="refresh-note" style="margin:0 0 0 auto">${post.localOnly ? 'Only on this browser' : 'Shared with campus'}</span></div></article>`;
   }
 
   function postMedia(post) {
@@ -232,12 +256,33 @@
     }).join('')}</div>`;
   }
 
-  function renderPostDetail() {
-    const post = localRead('posts').find(item => item.id === state.activePost);
-    if (!post) { content.innerHTML = '<div class="refresh-empty"><strong>Post not found</strong><p>This post may have been removed from this device.</p></div>'; return; }
-    const comments = localRead(`comments-${post.id}`);
+  async function renderPostDetail() {
+    const post = state.posts.find(item => item.id === state.activePost) || state.localPosts.find(item => item.id === state.activePost);
+    if (!post) { content.innerHTML = '<div class="refresh-empty"><strong>Post not found</strong><p>This post is not available in the campus feed.</p><button class="refresh-secondary" type="button" data-route="feed">Back to Home</button></div>'; return; }
+    const postId = state.activePost;
+    if (post.localOnly) {
+      const savedComments = localRead(`comments-${post.id}`);
+      state.comments = Array.isArray(savedComments) ? savedComments : [];
+      content.innerHTML = renderPostDetailContent(post, state.comments);
+      return;
+    }
+    content.innerHTML = '<div class="refresh-loading">Loading conversation…</div>';
+    let comments;
+    try {
+      comments = await api(`/api/posts/${encodeURIComponent(postId)}/comments`);
+    } catch (error) {
+      if (state.route !== 'post' || state.activePost !== postId) return;
+      content.innerHTML = `<button class="refresh-detail-back" type="button" data-route="feed">← Back to Home</button><div class="refresh-empty"><strong>Could not load replies</strong><p>${escapeHtml(error.message)}</p><button class="refresh-secondary" type="button" data-action="retry-post">Try again</button></div>`;
+      return;
+    }
+    if (state.route !== 'post' || state.activePost !== postId) return;
+    state.comments = comments;
+    content.innerHTML = renderPostDetailContent(post, comments);
+  }
+
+  function renderPostDetailContent(post, comments) {
     const answerMode = post.category === 'Questions';
-    content.innerHTML = `<button class="refresh-detail-back" type="button" data-route="feed">← Back to Home</button><article class="refresh-card refresh-post"><div class="refresh-post-head"><div class="refresh-avatar">${escapeHtml(post.initials)}</div><div class="refresh-post-user"><strong>${escapeHtml(post.name)}</strong><span>${escapeHtml(post.when || 'Just now')}</span></div><span class="refresh-post-tag">${escapeHtml(post.category || 'Campus')}</span></div><p class="refresh-post-text">${escapeHtml(post.text)}</p>${postMedia(post)}${postReactionBar(post)}<div class="refresh-post-actions"><span class="refresh-note" style="margin:0">${answerMode ? 'Question for the community' : 'Campus conversation'}</span><span class="refresh-note" style="margin:0 0 0 auto">Saved on this device</span></div></article><section class="refresh-card refresh-card-pad" style="margin-top:15px"><div class="refresh-section-head"><h2>${answerMode ? 'Answers' : 'Conversation'}</h2><span>${comments.length} ${answerMode ? 'answers' : 'replies'} · this device</span></div><form class="refresh-modal-form" data-form="comment"><textarea name="comment" placeholder="${answerMode ? 'Share an answer…' : 'Add to the conversation…'}" required maxlength="500"></textarea><div style="display:flex;justify-content:flex-end"><button class="refresh-primary" type="submit">${answerMode ? 'Post answer' : 'Add reply'}</button></div></form><div class="refresh-comments">${comments.length ? comments.map(comment => `<div class="refresh-comment"><div class="refresh-avatar">${escapeHtml(comment.initials)}</div><p><strong>${escapeHtml(comment.name)}</strong><br>${escapeHtml(comment.text)}</p></div>`).join('') : `<p class="refresh-note">No ${answerMode ? 'answers' : 'replies'} yet. Be the first to respond.</p>`}</div></section>`;
+    return `<button class="refresh-detail-back" type="button" data-route="feed">← Back to Home</button><article class="refresh-card refresh-post"><div class="refresh-post-head"><div class="refresh-avatar">${escapeHtml(post.initials)}</div><div class="refresh-post-user"><strong>${escapeHtml(post.name)}</strong><span>${escapeHtml(post.localOnly ? post.when || 'Saved on this browser' : fmtConversationTime(post.createdAt) || 'Just now')}</span></div><span class="refresh-post-tag">${escapeHtml(post.category || 'Campus')}</span></div><p class="refresh-post-text">${escapeHtml(post.text)}</p>${postMedia(post)}${postReactionBar(post)}<div class="refresh-post-actions"><span class="refresh-note" style="margin:0">${answerMode ? 'Question for the community' : 'Campus conversation'}</span><span class="refresh-note" style="margin:0 0 0 auto">${post.localOnly ? 'Only on this browser' : 'Shared with campus'}</span></div></article><section class="refresh-card refresh-card-pad" style="margin-top:15px"><div class="refresh-section-head"><h2>${answerMode ? 'Answers' : 'Conversation'}</h2><span>${comments.length} ${answerMode ? 'answers' : 'replies'}${post.localOnly ? ' · this browser' : ''}</span></div><form class="refresh-modal-form" data-form="comment"><textarea name="comment" placeholder="${answerMode ? 'Share an answer…' : 'Add to the conversation…'}" required maxlength="500"></textarea><div style="display:flex;justify-content:flex-end"><button class="refresh-primary" type="submit">${answerMode ? 'Post answer' : 'Add reply'}</button></div></form><div class="refresh-comments">${comments.length ? comments.map(comment => `<div class="refresh-comment"><div class="refresh-avatar">${escapeHtml(comment.initials)}</div><p><strong>${escapeHtml(comment.name)}</strong><br>${escapeHtml(comment.text)}</p></div>`).join('') : `<p class="refresh-note">No ${answerMode ? 'answers' : 'replies' } yet. Be the first to respond.</p>`}</div></section>`;
   }
 
   async function renderCliques() {
@@ -661,73 +706,13 @@
     modal.addEventListener('click', event => { if (event.target === modal) { state.modal = null; modal.remove(); } });
     shell.appendChild(modal);
     modal.querySelector('[data-close-modal]')?.addEventListener('click', () => { state.modal = null; modal.remove(); });
-    const photoInput = modal.querySelector('#postImages');
-    photoInput?.addEventListener('change', async () => {
-      const selected = Array.from(photoInput.files || []);
-      if (!selected.length) return;
-      const currentModal = state.modal;
-      currentModal.processingImages = true;
-      try {
-        const existing = currentModal.images || [];
-        if (existing.length + selected.length > 3) throw new Error('Choose up to 3 photos for each post.');
-        const prepared = await Promise.all(selected.map(preparePostImage));
-        if (state.modal !== currentModal) return;
-        const nextImages = [...existing, ...prepared];
-        if (nextImages.reduce((total, image) => total + image.src.length, 0) > 750000) {
-          throw new Error('These photos are too large to save together. Choose fewer or smaller images.');
-        }
-        currentModal.images = nextImages;
-        renderPostImagePreview();
-      } catch (error) {
-        if (state.modal === currentModal) toast(error.message);
-      } finally {
-        currentModal.processingImages = false;
-        photoInput.value = '';
-      }
-    });
     modal.querySelector('input,textarea')?.focus();
-  }
-
-  async function preparePostImage(file) {
-    const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!acceptedTypes.includes(file.type)) throw new Error('Choose a JPG, PNG, WebP, or GIF image.');
-    if (file.size > 8 * 1024 * 1024) throw new Error('Each photo must be smaller than 8 MB.');
-    const objectUrl = URL.createObjectURL(file);
-    try {
-      const image = new Image();
-      image.src = objectUrl;
-      await new Promise((resolve, reject) => {
-        image.onload = resolve;
-        image.onerror = () => reject(new Error(`Could not read ${file.name}.`));
-      });
-      const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-      let src = '';
-      for (const quality of [0.78, 0.62, 0.48]) {
-        src = canvas.toDataURL('image/webp', quality);
-        if (!src.startsWith('data:image/webp')) src = canvas.toDataURL('image/jpeg', quality);
-        if (src.length <= 300000) break;
-      }
-      if (src.length > 300000) throw new Error(`${file.name} is too large to keep with this post. Choose a smaller image.`);
-      return { src, alt: file.name.slice(0, 120) };
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  }
-
-  function renderPostImagePreview() {
-    const preview = shell?.querySelector('#postImagePreview');
-    if (!preview) return;
-    preview.innerHTML = (state.modal?.images || []).map((image, index) => `<div class="refresh-photo-preview-item"><img src="${escapeHtml(image.src)}" alt="${escapeHtml(image.alt)}"><button type="button" class="refresh-photo-remove" data-action="remove-post-image" data-index="${index}" aria-label="Remove ${escapeHtml(image.alt)}">×</button></div>`).join('');
   }
 
   function modalContents(modal) {
     const header = (title, copy) => `<div class="refresh-modal-head"><div><h2>${title}</h2><p>${copy}</p></div><button type="button" class="refresh-icon-btn" data-close-modal aria-label="Close">×</button></div>`;
     const footer = submit => `<div class="refresh-modal-footer"><button type="button" class="refresh-secondary" data-close-modal>Cancel</button><button type="submit" class="refresh-primary">${submit}</button></div>`;
-    if (modal.type === 'post') return `<section class="refresh-modal refresh-post-modal">${header('Share with your campus','Add a photo, ask a question, or share a campus moment. Posts stay on this device.')}<form class="refresh-modal-form" data-form="post"><label class="refresh-form-label" for="postCategory">Post type</label><select id="postCategory" name="category"><option value="Campus">Campus moment</option><option value="Study resources">Study resource</option><option value="Questions">Question</option><option value="Wins">Study win</option></select><label class="refresh-form-label" for="postText">Your post</label><textarea id="postText" name="text" maxlength="800" placeholder="What’s on your mind?"></textarea><label class="refresh-photo-picker" for="postImages"><span class="refresh-photo-icon">▧</span><span><strong>Add photos</strong><small>Up to 3 images · saved in this browser</small></span><input id="postImages" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label><div class="refresh-photo-preview" id="postImagePreview"></div>${footer('Share post')}</form></section>`;
+    if (modal.type === 'post') return `<section class="refresh-modal refresh-post-modal">${header('Share with your campus','Text posts are shared with all Klasora members. Photos are coming later.')}<form class="refresh-modal-form" data-form="post"><label class="refresh-form-label" for="postCategory">Post type</label><select id="postCategory" name="category"><option value="Campus">Campus moment</option><option value="Study resources">Study resource</option><option value="Questions">Question</option><option value="Wins">Study win</option></select><label class="refresh-form-label" for="postText">Your post</label><textarea id="postText" name="text" maxlength="800" required placeholder="What’s on your mind?"></textarea>${footer('Share post')}</form></section>`;
     if (modal.type === 'comment') return '';
     if (modal.type === 'clique') return `<section class="refresh-modal">${header('Create a clique','Choose who can discover and join your group.')}<form class="refresh-modal-form" data-form="clique"><label class="refresh-form-label" for="cliqueNameNew">Clique name</label><input id="cliqueNameNew" name="name" required maxlength="60" placeholder="e.g. Biology study group"><label class="refresh-form-label" for="cliqueDescriptionNew">About this clique</label><textarea id="cliqueDescriptionNew" name="description" maxlength="300" placeholder="What will your clique study or discuss?"></textarea><label class="refresh-form-label" for="cliqueVisibilityNew">Who can join?</label><select id="cliqueVisibilityNew" name="visibility"><option value="private" selected>Private · request approval or use an invite link</option><option value="public">Public · anyone can discover and join</option></select><label class="refresh-form-label" for="cliqueEmojiNew">Choose an emoji</label><input id="cliqueEmojiNew" name="emoji" maxlength="4" value="📚"><label class="refresh-form-label" for="cliqueMembersNew">Invite by email <span class="refresh-note">(optional, comma separated)</span></label><input id="cliqueMembersNew" name="emails" type="text" placeholder="classmate@example.com">${footer('Create clique')}</form></section>`;
     if (modal.type === 'clique-discover') return `<section class="refresh-modal">${header('Discover public cliques','Find a study group or campus community to join.')}<form class="refresh-modal-form" data-form="clique-search"><label class="refresh-form-label" for="cliqueSearch">Search cliques</label><div class="refresh-inline-actions"><input id="cliqueSearch" name="query" maxlength="80" placeholder="Search name or topic" value="${escapeHtml(modal.query || '')}"><button type="submit" class="refresh-secondary">Search</button></div></form><div class="refresh-clique-modal-list">${modal.loading ? '<div class="refresh-loading">Looking for public cliques…</div>' : renderDiscoveredCliques(modal.cliques || [])}</div></section>`;
@@ -745,26 +730,33 @@
     const form = event.target.closest('form[data-form]');
     if (!form) return;
     event.preventDefault();
-    if (state.modal?.processingImages) { toast('Wait for your photos to finish preparing.'); return; }
     const data = Object.fromEntries(new FormData(form).entries());
     try {
       if (form.dataset.form === 'post') {
-      if (!data.text.trim() && !state.modal?.images?.length) { toast('Add a message or at least one photo to your post.'); return; }
-      const posts = localRead('posts');
-        posts.push({ id: crypto.randomUUID(), name: user().name || 'Student', initials: initials(user().name), text: data.text.trim(), category: data.category || 'Campus', images: state.modal?.images || [], reactionCounts: {}, commentCount: 0 });
-        localWrite('posts', posts);
+        const post = await api('/api/posts', 'POST', { text: data.text.trim(), category: data.category || 'Campus' });
+        handlePostEvent('post_created', post);
+        shell.querySelector('.refresh-modal-backdrop')?.remove();
         state.modal = null;
         render();
-        toast('Your post was saved on this device.');
+        toast('Your post was shared with campus.');
       } else if (form.dataset.form === 'comment') {
-        const post = localRead('posts').find(item => item.id === state.activePost);
-        if (!post) return;
-        const comments = localRead(`comments-${post.id}`);
-        comments.push({ name: user().name || 'Student', initials: initials(user().name), text: data.comment.trim(), when: new Date().toISOString() });
-        localWrite(`comments-${post.id}`, comments);
-        post.commentCount = comments.length;
-        localWrite('posts', localRead('posts').map(item => item.id === post.id ? post : item));
-        render();
+        const postId = state.activePost;
+        const localPost = state.localPosts.find(item => item.id === postId);
+        if (localPost) {
+          const savedComments = localRead(`comments-${postId}`);
+          const comments = Array.isArray(savedComments) ? savedComments : [];
+          comments.push({ id: crypto.randomUUID(), name: user().name || 'Student', initials: initials(user().name), text: data.comment.trim(), when: new Date().toISOString() });
+          localWrite(`comments-${postId}`, comments);
+          localPost.commentCount = comments.length;
+          localWrite('posts', state.localPosts.map(({ localOnly, ...post }) => post));
+          state.comments = comments;
+          renderPostDetail();
+          toast('Your reply was saved on this browser.');
+          return;
+        }
+        const comment = await api(`/api/posts/${encodeURIComponent(postId)}/comments`, 'POST', { text: data.comment.trim() });
+        handlePostEvent('post_comment_created', { postId, comment });
+        toast('Your reply was shared.');
       } else if (form.dataset.form === 'event') {
         const events = localRead('events');
         events.push({ id: crypto.randomUUID(), title: data.title.trim(), date: data.date, time: data.time, location: data.location.trim() });
@@ -833,10 +825,8 @@
     const action = target.dataset.action;
     const id = target.dataset.id;
     if (action === 'compose') openModal('post');
-    else if (action === 'remove-post-image') {
-      state.modal.images.splice(Number(target.dataset.index), 1);
-      renderPostImagePreview();
-    }
+    else if (action === 'retry-feed') renderFeed();
+    else if (action === 'retry-post') renderPostDetail();
     else if (action === 'create-clique') openModal('clique');
     else if (action === 'discover-cliques') {
       if (state.modal?.type === 'clique-discover') loadCliqueDiscovery(state.modal.query || '');
@@ -1030,18 +1020,62 @@
   }
 
   function openPost(id) { state.activePost = id; setRoute('post'); }
-  function toggleReaction(id, reaction) {
-    const posts = localRead('posts');
-    const post = posts.find(item => item.id === id);
-    if (!post || !postReactions.some(item => item.id === reaction)) return;
-    post.reactionCounts ||= {};
-    const current = post.myReaction || (post.liked ? 'like' : '');
-    if (current) post.reactionCounts[current] = Math.max(0, Number(post.reactionCounts[current] || 0) - 1);
-    post.myReaction = current === reaction ? '' : reaction;
-    if (post.myReaction) post.reactionCounts[reaction] = Number(post.reactionCounts[reaction] || 0) + 1;
-    post.liked = post.myReaction === 'like';
-    localWrite('posts', posts);
-    render();
+  async function toggleReaction(id, reaction) {
+    if (!postReactions.some(item => item.id === reaction)) return;
+    const localPost = state.localPosts.find(item => item.id === id);
+    if (localPost) {
+      localPost.reactionCounts ||= {};
+      const current = localPost.myReaction || (localPost.liked ? 'like' : '');
+      if (current) localPost.reactionCounts[current] = Math.max(0, Number(localPost.reactionCounts[current] || 0) - 1);
+      localPost.myReaction = current === reaction ? '' : reaction;
+      if (localPost.myReaction) localPost.reactionCounts[reaction] = Number(localPost.reactionCounts[reaction] || 0) + 1;
+      localPost.liked = localPost.myReaction === 'like';
+      localWrite('posts', state.localPosts.map(({ localOnly, ...post }) => post));
+      if (state.route === 'post') renderPostDetail();
+      else if (state.route === 'feed') renderFeedPosts(state.posts);
+      return;
+    }
+    const post = state.posts.find(item => item.id === id);
+    if (!post) return;
+    const current = post.myReaction || '';
+    try {
+      const result = await api(`/api/posts/${encodeURIComponent(id)}/reaction`, 'PUT', {
+        reaction: current === reaction ? '' : reaction
+      });
+      handlePostEvent('post_reaction_changed', result);
+    } catch (error) {
+      toast(`Could not save reaction: ${error.message}`);
+    }
+  }
+
+  function handlePostEvent(event, payload) {
+    if (event === 'post_created' && payload?.id) {
+      state.posts = [payload, ...state.posts.filter(post => post.id !== payload.id)]
+        .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+        .slice(0, 100);
+      if (state.route === 'feed') renderFeedPosts(state.posts);
+      return;
+    }
+    if (event === 'post_comment_created' && payload?.postId && payload.comment?.id) {
+      const post = state.posts.find(item => item.id === payload.postId);
+      if (!post) return;
+      state.seenCommentIds ||= new Set();
+      const exists = state.comments.some(comment => comment.id === payload.comment.id) || state.seenCommentIds.has(payload.comment.id);
+      state.seenCommentIds.add(payload.comment.id);
+      if (!exists) post.commentCount = Number(post.commentCount || 0) + 1;
+      if (state.activePost === payload.postId && !exists) state.comments.push(payload.comment);
+      if (state.route === 'post' && state.activePost === payload.postId) renderPostDetail();
+      else if (state.route === 'feed') renderFeedPosts(state.posts);
+      return;
+    }
+    if (event === 'post_reaction_changed' && payload?.postId) {
+      const post = state.posts.find(item => item.id === payload.postId);
+      if (!post) return;
+      post.reactionCounts = payload.reactionCounts || {};
+      if (payload.userId === user()._id) post.myReaction = payload.reaction || '';
+      if (state.route === 'post' && state.activePost === payload.postId) renderPostDetail();
+      else if (state.route === 'feed') renderFeedPosts(state.posts);
+    }
   }
   async function openClique(clique) {
     if (!clique) return;
@@ -1244,6 +1278,7 @@
       const history = Array.isArray(savedHistory) ? savedHistory : [];
       localWrite('call-history', history.map(entry => entry.id === id ? { ...entry, ...changes } : entry));
     },
+    handlePostEvent,
     notifyChat,
     notifyMissedCall
   };

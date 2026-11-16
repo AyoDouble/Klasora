@@ -12,6 +12,7 @@ const path       = require('path');
 const multer     = require('multer');
 const webpush    = require('web-push');
 const { getAuthRedirectUrl } = require('./auth-redirect');
+const { createCommunityPostHandlers } = require('./community-posts');
 
 const app    = express();
 const server = http.createServer(app);
@@ -362,6 +363,13 @@ app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ backendUrl: publicBackendUrl });
 });
+
+const communityPostHandlers = createCommunityPostHandlers({ supabase, io });
+app.get('/api/posts', auth, communityPostHandlers.list);
+app.post('/api/posts', auth, communityPostHandlers.create);
+app.get('/api/posts/:postId/comments', auth, communityPostHandlers.listComments);
+app.post('/api/posts/:postId/comments', auth, communityPostHandlers.createComment);
+app.put('/api/posts/:postId/reaction', auth, communityPostHandlers.setReaction);
 
 app.post('/api/register', async (req, res) => {
   try {

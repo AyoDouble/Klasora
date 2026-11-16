@@ -1170,6 +1170,9 @@ async function connectSocket(){
   socket.on('message_updated', msg=>{ if(msg.roomId===activeRoomId){ const b=document.querySelector(`[data-msgid="${msg._id}"]`); if(b) refreshReactions(b,msg); } });
   socket.on('message_deleted', ({msgId,roomId})=>{ if(roomId===activeRoomId) removeMessage(msgId); });
   socket.on('message_status', ({msgId,status,deliveredAt,readBy})=>updateMessageStatus(msgId,status,deliveredAt,readBy));
+  ['post_created','post_comment_created','post_reaction_changed'].forEach(eventName=>{
+    socket.on(eventName,payload=>window.KlasoraRefresh?.handlePostEvent(eventName,payload));
+  });
   socket.on('presence', ({userId,online})=>{ document.querySelectorAll(`[data-pres="${userId}"]`).forEach(d=>d.className='av-dot '+(online?'dot-on':'dot-off')); if(activeType==='dm'){ const item=allItems.find(x=>x._id===activeId); if(item){ const o=getOther(item); if(o?._id===userId) document.getElementById('chSub').textContent=online?'● Online':'○ Offline'; } } });
   socket.on('typing', ({roomId,userId,isTyping})=>{ if(roomId!==activeRoomId||userId===myUser._id)return; typingUsers[userId]=isTyping; const activeTyping=Object.entries(typingUsers).filter(([id,typing])=>typing&&id!==myUser._id).map(([id])=>typingUserName(id)); const any=activeTyping.length>0; document.getElementById('typInd').style.display=any?'flex':'none'; if(any)document.getElementById('typTxt').textContent=activeTyping.length===1?`${activeTyping[0]} is typing…`:`${activeTyping.length} people are typing…`; });
   // WebRTC signaling

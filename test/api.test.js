@@ -3,12 +3,79 @@ const { test, before, after } = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const { getAuthRedirectUrl } = require('../auth-redirect');
+const { createCommunityPostHandlers } = require('../community-posts');
 
 const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-that-is-at-least-32-characters-long';
 let baseUrl;
 let server;
+
+const createFakeSupabase = seed => {
+  const tables = Object.fromEntries(Object.entries(seed).map(([name, rows]) => [name, rows.map(row => ({ ...row }))]));
+  class Query {
+    constructor(table) {
+      this.table = table;
+      this.action = 'select';
+      this.filters = [];
+      this.orderBy = null;
+      this.rowLimit = null;
+      this.payload = null;
+    }
+    select() { return this; }
+    eq(key, value) { this.filters.push(row => row[key] === value); return this; }
+    in(key, values) { this.filters.push(row => values.includes(row[key])); return this; }
+    order(key, { ascending }) { this.orderBy = { key, ascending }; return this; }
+    limit(value) { this.rowLimit = value; return this; }
+    insert(rows) { this.action = 'insert'; this.payload = rows; return this; }
+    update(values) { this.action = 'update'; this.payload = values; return this; }
+    delete() { this.action = 'delete'; return this; }
+    matchingRows() { return (tables[this.table] || []).filter(row => this.filters.every(matches => matches(row))); }
+    async execute() {
+      const rows = tables[this.table] || (tables[this.table] = []);
+      if (this.action === 'insert') {
+        const inserted = this.payload.map(row => ({ id: crypto.randomUUID(), created_at: new Date().toISOString(), ...row }));
+        rows.push(...inserted);
+        return { data: inserted, error: null };
+      }
+      const matching = this.matchingRows();
+      if (this.action === 'update') {
+        matching.forEach(row => Object.assign(row, this.payload));
+        return { data: matching, error: null };
+      }
+      if (this.action === 'delete') {
+        tables[this.table] = rows.filter(row => !matching.includes(row));
+        return { data: matching, error: null };
+      }
+      const result = [...matching];
+      if (this.orderBy) {
+        result.sort((left, right) => (left[this.orderBy.key] > right[this.orderBy.key] ? 1 : -1) * (this.orderBy.ascending ? 1 : -1));
+      }
+      return { data: this.rowLimit === null ? result : result.slice(0, this.rowLimit), error: null };
+    }
+    async single() {
+      const result = await this.execute();
+      return { ...result, data: Array.isArray(result.data) ? result.data[0] || null : result.data };
+    }
+    async maybeSingle() { return this.single(); }
+    then(resolve, reject) { return this.execute().then(resolve, reject); }
+  }
+  return { tables, from: table => new Query(table) };
+};
+
+const invokeHandler = async (handler, request) => {
+  const response = {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    status(code) { this.statusCode = code; return this; },
+    set(name, value) { this.headers[name] = value; return this; },
+    json(body) { this.body = body; return this; }
+  };
+  await handler(request, response);
+  return response;
+};
 
 test('uses a matching configured request origin for production auth links', () => {
   const req = { get: name => name === 'origin' ? 'https://klasora.vercel.app' : undefined };
@@ -202,9 +269,11 @@ test('notifies once when the realtime connection fails and clears the warning on
     on: (event, handler) => { handlers.set(event, handler); },
     disconnect() {}
   };
+  const postEvents = [];
   const context = {
     io: () => testSocket,
     loadSocketClient: () => Promise.resolve(),
+    window: { KlasoraRefresh: { handlePostEvent: (...event) => postEvents.push(event) } },
     socket: null,
     SERVER_URL: 'https://chat-api.example',
     token: 'test-token',
@@ -223,6 +292,9 @@ test('notifies once when the realtime connection fails and clears the warning on
   assert.equal(notices.length, 2);
   assert.match(notices[1][1], /Chat connection restored/);
   assert.equal(context.socketConnectionNoticeShown, false);
+
+  handlers.get('post_created')({ id: 'post-1' });
+  assert.deepEqual(postEvents, [['post_created', { id: 'post-1' }]]);
 });
 
 async function request(route, options = {}) {
@@ -286,7 +358,7 @@ test('returns the configured public backend origin without caching', async () =>
 test('rejects protected routes without a token', async () => {
   const cliqueId = 'c647a93b-60d0-4fc7-a89c-62bd97b58f22';
   for (const route of [
-    '/api/me', '/api/dms', '/api/courses', '/api/status',
+    '/api/me', '/api/dms', '/api/courses', '/api/status', '/api/posts',
     '/api/cliques/discover', '/api/cliques/join-requests',
     `/api/cliques/${cliqueId}/invite`, `/api/cliques/${cliqueId}/members`, `/api/cliques/${cliqueId}/pins`
   ]) {
@@ -295,6 +367,133 @@ test('rejects protected routes without a token', async () => {
   }
   const join = await request(`/api/cliques/${cliqueId}/join`, { method: 'POST' });
   assert.equal(join.status, 401);
+});
+
+test('validates community post inputs before database access', async () => {
+  const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const emptyPost = await request('/api/posts', {
+    method: 'POST', headers, body: JSON.stringify({ text: '   ', category: 'Campus' })
+  });
+  assert.equal(emptyPost.status, 400);
+  assert.match(await emptyPost.text(), /post text must be between/i);
+
+  const invalidCategory = await request('/api/posts', {
+    method: 'POST', headers, body: JSON.stringify({ text: 'Hello campus', category: 'Private' })
+  });
+  assert.equal(invalidCategory.status, 400);
+  assert.match(await invalidCategory.text(), /valid post category/i);
+
+  const invalidComment = await request('/api/posts/not-a-uuid/comments', {
+    method: 'POST', headers, body: JSON.stringify({ text: 'A reply' })
+  });
+  assert.equal(invalidComment.status, 400);
+
+  const unavailableFeed = await request('/api/posts', { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(unavailableFeed.status, 503);
+  assert.match(await unavailableFeed.text(), /apply supabase\/schema\.sql/i);
+});
+
+test('serves shared posts with author, reply count, and per-user reactions', async () => {
+  const authorId = 'c647a93b-60d0-4fc7-a89c-62bd97b58f22';
+  const memberId = '718b8b32-0ed5-46ce-a621-8947886a0011';
+  const postId = 'fa0632b7-8eba-4a2d-b799-cfe66ac4247a';
+  const supabase = createFakeSupabase({
+    users: [{ id: authorId, name: 'Ada Student', color: '#123456' }],
+    community_posts: [{ id: postId, user_id: authorId, text: 'Shared study notes', category: 'Study resources', created_at: '2026-11-16T10:00:00.000Z' }],
+    community_post_comments: [{ id: crypto.randomUUID(), post_id: postId, user_id: memberId, text: 'Thanks!', created_at: '2026-11-16T10:01:00.000Z' }],
+    community_post_reactions: [{ id: crypto.randomUUID(), post_id: postId, user_id: memberId, reaction: 'like' }]
+  });
+  const handlers = createCommunityPostHandlers({ supabase, io: { emit() {} } });
+
+  const response = await invokeHandler(handlers.list, { userId: memberId });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers['Cache-Control'], 'no-store');
+  assert.equal(response.body.length, 1);
+  assert.equal(response.body[0].name, 'Ada Student');
+  assert.equal(response.body[0].initials, 'AS');
+  assert.equal(response.body[0].commentCount, 1);
+  assert.deepEqual(response.body[0].reactionCounts, { like: 1 });
+  assert.equal(response.body[0].myReaction, 'like');
+});
+
+test('creates shared posts, replies, and toggleable reactions with realtime events', async () => {
+  const authorId = 'c647a93b-60d0-4fc7-a89c-62bd97b58f22';
+  const memberId = '718b8b32-0ed5-46ce-a621-8947886a0011';
+  const supabase = createFakeSupabase({
+    users: [{ id: authorId, name: 'Ada Student', color: '#123456' }, { id: memberId, name: 'Sam Learner', color: '#654321' }],
+    community_posts: [],
+    community_post_comments: [],
+    community_post_reactions: []
+  });
+  const events = [];
+  const handlers = createCommunityPostHandlers({ supabase, io: { emit: (...event) => events.push(event) } });
+
+  const created = await invokeHandler(handlers.create, {
+    userId: authorId,
+    body: { text: '  Study group at noon  ', category: 'Campus' }
+  });
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.body.text, 'Study group at noon');
+  assert.equal(created.body.name, 'Ada Student');
+  assert.equal(supabase.tables.community_posts.length, 1);
+  assert.equal(events[0][0], 'post_created');
+
+  const postId = created.body.id;
+  const reply = await invokeHandler(handlers.createComment, {
+    userId: memberId,
+    params: { postId },
+    body: { text: '  I will join!  ' }
+  });
+  assert.equal(reply.statusCode, 201);
+  assert.equal(reply.body.text, 'I will join!');
+  assert.equal(events[1][0], 'post_comment_created');
+
+  const listedReplies = await invokeHandler(handlers.listComments, { userId: authorId, params: { postId } });
+  assert.equal(listedReplies.body.length, 1);
+  assert.equal(listedReplies.body[0].name, 'Sam Learner');
+
+  const reacted = await invokeHandler(handlers.setReaction, {
+    userId: memberId, params: { postId }, body: { reaction: 'love' }
+  });
+  assert.deepEqual(reacted.body.reactionCounts, { love: 1 });
+  assert.equal(events[2][0], 'post_reaction_changed');
+  const removed = await invokeHandler(handlers.setReaction, {
+    userId: memberId, params: { postId }, body: { reaction: 'love' }
+  });
+  assert.deepEqual(removed.body.reactionCounts, {});
+  assert.equal(supabase.tables.community_post_reactions.length, 0);
+});
+
+test('applies realtime post, reply, and reaction events to the shared feed state', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'ui-refresh.js'), 'utf8');
+  const eventHandler = source.match(/function handlePostEvent\(event, payload\)\s*\{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(eventHandler, 'the refreshed feed must expose a realtime post event handler');
+  const renderedPosts = [];
+  const context = {
+    state: {
+      route: 'feed',
+      posts: [],
+      comments: [],
+      seenCommentIds: new Set(),
+      activePost: null
+    },
+    user: () => ({ _id: 'member-1' }),
+    renderFeedPosts: posts => renderedPosts.push(posts)
+  };
+  vm.runInNewContext(`${eventHandler}\nhandlePostEvent('post_created',{id:'post-1',userId:'author-1',text:'Campus update',createdAt:'2026-11-16T10:00:00.000Z'});`, context);
+  assert.equal(context.state.posts.length, 1);
+  assert.equal(context.state.posts[0].text, 'Campus update');
+  assert.equal(renderedPosts.length, 1);
+
+  vm.runInNewContext(`handlePostEvent('post_comment_created',{postId:'post-1',comment:{id:'comment-1',text:'Thanks'}});`, context);
+  assert.equal(context.state.posts[0].commentCount, 1);
+  vm.runInNewContext(`handlePostEvent('post_comment_created',{postId:'post-1',comment:{id:'comment-1',text:'Thanks'}});`, context);
+  assert.equal(context.state.posts[0].commentCount, 1);
+
+  vm.runInNewContext(`handlePostEvent('post_reaction_changed',{postId:'post-1',userId:'member-1',reaction:'love',reactionCounts:{love:1}});`, context);
+  assert.equal(context.state.posts[0].myReaction, 'love');
+  assert.equal(context.state.posts[0].reactionCounts.love, 1);
 });
 
 test('returns a safe JSON error when an async API handler fails', async () => {
