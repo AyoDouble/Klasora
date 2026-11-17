@@ -361,7 +361,10 @@ const validateCredentials = ({ name, email, password }, includeName = false) => 
 // ── AUTH ROUTES ───────────────────────────────────────────────
 app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ backendUrl: publicBackendUrl });
+  res.json({
+    backendUrl: publicBackendUrl,
+    realtimeAvailable: Boolean(publicBackendUrl) || process.env.VERCEL !== '1'
+  });
 });
 
 const communityPostHandlers = createCommunityPostHandlers({ supabase, io });
@@ -1064,8 +1067,10 @@ app.get('/api/messages/search', auth, async (req, res) => {
 });
 
 app.get('/api/messages/:roomId', auth, async (req, res) => {
-  const course = await Course.findOne({ roomId: req.params.roomId });
-  if (course && !courseHasMember(course, req.userId)) return res.status(403).json({ error: 'You are not a member of this course' });
+  const target = await findChatRoom(req.params.roomId);
+  if (!target || !courseHasMember(target.room, req.userId)) {
+    return res.status(403).json({ error: 'You are not a member of this conversation' });
+  }
   const msgs = await Message.find({ roomId: req.params.roomId });
   res.json(msgs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).slice(0, 100));
 });
@@ -1312,16 +1317,28 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('send_message', async (data) => {
+  socket.on('send_message', async (data, acknowledge) => {
+    let acknowledged = false;
+    const respond = result => {
+      if (acknowledged) return;
+      acknowledged = true;
+      if (typeof acknowledge === 'function') acknowledge(result);
+    };
     try {
+      if (!data || typeof data !== 'object') {
+        return respond({ ok: false, error: 'Invalid message.' });
+      }
       const { roomId, text, senderName, senderColor, type, fileUrl, fileName, fileSize } = data;
       const target = await findChatRoom(roomId);
-      if (!target || !courseHasMember(target.room, uid)) return socket.emit('error', 'You are not a member of this conversation');
+      if (!target || !courseHasMember(target.room, uid)) {
+        return respond({ ok: false, error: 'You are not a member of this conversation.' });
+      }
       const msg = await Message.create({ roomId, senderId: uid, senderName, senderColor, text: text||'', type: type||'text', fileUrl, fileName, fileSize, readBy: [] });
       const lastMessageUpdate = { lastMsg: text||fileName||'File', lastAt: new Date() };
       if (target.type === 'dm') await DM.findByIdAndUpdate(target.room._id, lastMessageUpdate);
       else if (target.type === 'clique') await Clique.findByIdAndUpdate(target.room._id, lastMessageUpdate);
       io.to(roomId).emit('new_message', msg);
+      respond({ ok: true, messageId: msg._id });
 
       // Push notification to offline members
       const members = (target.room.members || []).map(member => typeof member === 'string' ? member : (member._id || member.id));
@@ -1339,7 +1356,14 @@ io.on('connection', async (socket) => {
           }
         }
       }
-    } catch (e) { socket.emit('error', e.message); }
+    } catch (e) {
+      if (acknowledged) {
+        console.error('Socket message notification failed:', e);
+        return;
+      }
+      console.error('Socket message send failed:', e);
+      respond({ ok: false, error: 'Unable to send message. Please try again.' });
+    }
   });
 
   socket.on('mark_room_read', async ({ roomId }) => {

@@ -866,6 +866,7 @@ const EMOJIS = [
 ];
 const CLIQUE_ICONS = ['book-open','gamepad-2','basketball','music-2','laptop','palette','circle-dot','pizza','plane','drama','microscope','camera','dumbbell','target','lightbulb'];
 let SERVER_URL      = '';
+let REALTIME_AVAILABLE = true;
 
 let authStorage=sessionStorage.getItem('meno_token')?sessionStorage:localStorage;
 let socket=null, socketClientPromise=null, socketConnectionNoticeShown=false, token=authStorage.getItem('meno_token')||null, myUser=JSON.parse(authStorage.getItem('meno_user')||'null');
@@ -905,9 +906,11 @@ async function init() {
     const config=await response.json();
     if(!response.ok||typeof config.backendUrl!=='string') throw new Error('Backend configuration is unavailable');
     SERVER_URL=config.backendUrl.replace(/\/+$/,'');
+    REALTIME_AVAILABLE=config.realtimeAvailable!==false;
   }catch(error){
     console.error('Backend configuration unavailable:',error);
     SERVER_URL='';
+    REALTIME_AVAILABLE=false;
     showToast('⚠️','Chat server configuration unavailable','Using this site’s API; real-time chat may not connect.');
   }
   applyTheme(localStorage.getItem('meno_theme')||'dark');
@@ -1171,6 +1174,11 @@ function loadSocketClient(){
   return socketClientPromise;
 }
 async function connectSocket(){
+  if(!REALTIME_AVAILABLE){
+    if(!socketConnectionNoticeShown) showToast('⚠️','Live chat unavailable','Set PUBLIC_BACKEND_URL in Vercel to the public Railway HTTPS origin.');
+    socketConnectionNoticeShown=true;
+    return;
+  }
   try{await loadSocketClient();}
   catch(error){
     console.error('Realtime chat client unavailable:',error);
@@ -1187,7 +1195,9 @@ async function connectSocket(){
     console.error('Realtime chat connection failed:',error);
     if(socketConnectionNoticeShown) return;
     socketConnectionNoticeShown=true;
-    showToast('⚠️','Live chat unavailable','The chat server is disconnected. Messages and calls may not work.');
+    const unauthorized=/unauthorized|authentication/i.test(error?.message||'');
+    showToast('⚠️',unauthorized?'Chat authentication failed':'Live chat unavailable',
+      unauthorized?'Your session could not be verified. Sign out and sign in again.':'The chat server is disconnected. Messages and calls may not work.');
   });
   socket.on('new_message', msg=>{
     if(msg.roomId===activeRoomId){
@@ -1471,8 +1481,19 @@ function sendMsg(){
   if(pendingAttachment){ sendAttachment(); return; }
   if(pendingVoiceBlob){ sendVoiceNote(); return; }
   if(!text)return;
-  inp.value=''; inp.style.height='auto'; stopTyping();
-  socket.emit('send_message',{roomId:activeRoomId,text,senderName:myUser.name,senderColor:myUser.color||'#087e7b'});
+  const originalText=inp.value;
+  emitChatMessage({roomId:activeRoomId,text,senderName:myUser.name,senderColor:myUser.color||'#087e7b'},()=>{
+    if(inp.value===originalText){inp.value='';inp.style.height='auto';}
+  });
+  stopTyping();
+}
+function emitChatMessage(message,onSuccess){
+  if(!socket?.connected){showToast('⚠️','Live chat unavailable','Reconnect before sending; your message is still here.');return;}
+  socket.timeout(10000).emit('send_message',message,(timeoutError,result)=>{
+    if(timeoutError){showToast('⚠️','Message not sent','The chat server did not confirm delivery. Your message is still here.');return;}
+    if(!result?.ok){showToast('⚠️','Message not sent',result?.error||'Please try again.');return;}
+    onSuccess?.(result);
+  });
 }
 function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
 function onTyping(){ autoR(document.getElementById('msgInp')); if(!activeRoomId)return; socket?.emit('typing',{roomId:activeRoomId,isTyping:true}); clearTimeout(typTimer); typTimer=setTimeout(stopTyping,2000); }
@@ -1586,8 +1607,7 @@ async function sendVoiceNote(){
   try{
     const res=await fetch(SERVER_URL+'/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
     const data=await res.json(); if(!res.ok)throw new Error(data.error||'Upload failed');
-    socket.emit('send_message',{roomId:activeRoomId,text:'',senderName:myUser.name,senderColor:myUser.color||'#087e7b',type:'voice',fileUrl:data.url,fileName:data.name,fileSize:data.size});
-    clearVoiceNote();
+    emitChatMessage({roomId:activeRoomId,text:'',senderName:myUser.name,senderColor:myUser.color||'#087e7b',type:'voice',fileUrl:data.url,fileName:data.name,fileSize:data.size},clearVoiceNote);
   }catch(e){showToast('❌','Voice note failed',e.message);}
   finally{if(button){button.disabled=false;button.textContent='Send';}}
 }
@@ -1600,8 +1620,11 @@ async function sendAttachment(){
     const res=await fetch(SERVER_URL+'/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error||'Upload failed');
-    socket.emit('send_message',{roomId:activeRoomId,text:caption,senderName:myUser.name,senderColor:myUser.color||'#087e7b',type:data.isImage?'image':'file',fileUrl:data.url,fileName:data.name,fileSize:data.size});
-    document.getElementById('msgInp').value=''; document.getElementById('msgInp').style.height='auto'; clearAttachment();
+    emitChatMessage({roomId:activeRoomId,text:caption,senderName:myUser.name,senderColor:myUser.color||'#087e7b',type:data.isImage?'image':'file',fileUrl:data.url,fileName:data.name,fileSize:data.size},()=>{
+      const input=document.getElementById('msgInp');
+      if(input.value.trim()===caption){input.value='';input.style.height='auto';}
+      clearAttachment();
+    });
   }catch(e){showToast('❌','Upload failed',e.message);}
   finally{if(sendButton){sendButton.disabled=false;sendButton.textContent='Send';}}
 }
