@@ -238,6 +238,21 @@ frontend while keeping chat, presence, calls, and API requests available:
    `{{ .ConfirmationURL }}` and verify registration and password reset from the deployed
    frontend.
 
+Chat history and live delivery are separate paths: the authenticated
+`GET /api/messages/:roomId` endpoint loads saved history, while Socket.IO delivers new
+messages, presence, typing, and calls. Both use the signed-in user's JWT, and the server
+checks conversation membership. On Vercel, an empty `PUBLIC_BACKEND_URL` means the
+frontend sends history requests to its own API function, which can serve them only if its
+database settings are configured; live chat cannot connect. In the recommended split
+deployment, where Supabase credentials stay on Railway, chat history and sends are
+unavailable until the Railway origin is configured. Message drafts remain in the
+composer until the backend acknowledges storage. Verify the public, non-secret
+`/api/config` response on Vercel reports the Railway `backendUrl` and
+`realtimeAvailable: true`. If not, add or correct the Vercel variable and redeploy.
+The API and Socket.IO CORS policy allows cross-origin requests for this split-host
+setup; CORS is not an access-control boundary, so keep JWT authentication and
+server-side membership checks enabled.
+
 In the Supabase Dashboard, set Authentication → URL Configuration → Site URL to
 `https://klasora.vercel.app`. Add `https://klasora.vercel.app/**` and, for local
 development, `http://localhost:3000/**` to Redirect URLs. Add an exact Vercel preview

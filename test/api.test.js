@@ -180,6 +180,7 @@ test('keeps post-login startup working when the Socket.IO client is unavailable'
     },
     loadSocketClient: () => Promise.reject(new Error('client unavailable')),
     localStorage: { getItem: () => '1' },
+    REALTIME_AVAILABLE: true,
     myUser: { _id: 'test-user', name: 'Test User', email: 'test@example.com', theme: 'dark' },
     socket: null,
     showToast: (...notice) => notices.push(notice),
@@ -233,6 +234,51 @@ test('does not clear a message when the realtime socket is disconnected', () => 
   assert.match(notices[0][1], /Live chat unavailable/);
 });
 
+test('preserves a message until the server acknowledges it', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const sendFunction = html.match(/function sendMsg\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  const emitFunction = html.match(/function emitChatMessage\([\s\S]*?\n\}/)?.[0];
+  assert.ok(sendFunction, 'sendMsg must remain available in the application shell');
+  assert.ok(emitFunction, 'emitChatMessage must remain available in the application shell');
+
+  const input = { value: 'Keep until saved', style: {} };
+  const notices = [];
+  let acknowledge;
+  const emitted = [];
+  const context = {
+    pendingAttachment: null,
+    pendingVoiceBlob: null,
+    activeRoomId: 'test-room',
+    myUser: { name: 'Test User', color: '#123456' },
+    socket: {
+      connected: true,
+      timeout: () => ({
+        emit: (event, message, callback) => {
+          emitted.push({ event, message });
+          acknowledge = callback;
+        }
+      })
+    },
+    document: { getElementById: () => input },
+    stopTyping() {},
+    showToast: (...notice) => notices.push(notice)
+  };
+
+  vm.runInNewContext(`${emitFunction}\n${sendFunction}\nsendMsg();`, context);
+  assert.equal(input.value, 'Keep until saved');
+  assert.equal(emitted[0].event, 'send_message');
+  assert.equal(emitted[0].message.text, 'Keep until saved');
+
+  acknowledge(null, { ok: false, error: 'You are not a member of this conversation.' });
+  assert.equal(input.value, 'Keep until saved');
+  assert.match(notices[0][2], /not a member/);
+
+  vm.runInNewContext('sendMsg();', context);
+  assert.equal(input.value, 'Keep until saved');
+  acknowledge(null, { ok: true, messageId: 'saved-message' });
+  assert.equal(input.value, '');
+});
+
 test('loads the Socket.IO client from the configured backend', async () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const loaderFunction = html.match(/function loadSocketClient\(\)\s*\{[\s\S]*?\n\}/)?.[0];
@@ -258,6 +304,24 @@ test('loads the Socket.IO client from the configured backend', async () => {
   assert.equal(script.src, 'https://chat-api.example/socket.io/socket.io.js');
 });
 
+test('does not attempt a realtime connection when the Vercel backend is unconfigured', async () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const socketFunction = html.match(/async function connectSocket\(\)\s*\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(socketFunction, 'connectSocket must remain available in the application shell');
+
+  const notices = [];
+  const context = {
+    REALTIME_AVAILABLE: false,
+    socketConnectionNoticeShown: false,
+    loadSocketClient() { assert.fail('must not load a Vercel Socket.IO client'); },
+    showToast: (...notice) => notices.push(notice)
+  };
+
+  await vm.runInNewContext(`${socketFunction}\nconnectSocket();`, context);
+  assert.equal(context.socketConnectionNoticeShown, true);
+  assert.match(notices[0][2], /PUBLIC_BACKEND_URL/);
+});
+
 test('notifies once when the realtime connection fails and clears the warning on recovery', async () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const socketFunction = html.match(/async function connectSocket\(\)\s*\{[\s\S]*?\n\}/)?.[0];
@@ -267,16 +331,23 @@ test('notifies once when the realtime connection fails and clears the warning on
   const notices = [];
   const testSocket = {
     on: (event, handler) => { handlers.set(event, handler); },
+    emit: (...event) => postEvents.push(event),
     disconnect() {}
   };
   const postEvents = [];
+  const receivedMessages = [];
   const context = {
     io: () => testSocket,
     loadSocketClient: () => Promise.resolve(),
     window: { KlasoraRefresh: { handlePostEvent: (...event) => postEvents.push(event) } },
     socket: null,
     SERVER_URL: 'https://chat-api.example',
+    REALTIME_AVAILABLE: true,
     token: 'test-token',
+    activeRoomId: 'room-1',
+    myUser: { _id: 'current-user' },
+    appendMessage: message => receivedMessages.push(message),
+    updateListPreview() {},
     socketConnectionNoticeShown: false,
     console: { error() {} },
     showToast: (...notice) => notices.push(notice)
@@ -293,8 +364,19 @@ test('notifies once when the realtime connection fails and clears the warning on
   assert.match(notices[1][1], /Chat connection restored/);
   assert.equal(context.socketConnectionNoticeShown, false);
 
+  const message = { roomId: 'room-1', text: 'Hello from the other user' };
+  handlers.get('new_message')(message);
+  assert.equal(receivedMessages.length, 1);
+  assert.equal(receivedMessages[0].text, message.text);
+  assert.equal(postEvents[0][0], 'mark_room_read');
+  assert.equal(postEvents[0][1].roomId, 'room-1');
+
   handlers.get('post_created')({ id: 'post-1' });
-  assert.deepEqual(postEvents, [['post_created', { id: 'post-1' }]]);
+  assert.equal(postEvents[1][0], 'post_created');
+  assert.equal(postEvents[1][1].id, 'post-1');
+
+  handlers.get('connect_error')(new Error('Unauthorized'));
+  assert.equal(notices[2][1], 'Chat authentication failed');
 });
 
 async function request(route, options = {}) {
@@ -352,13 +434,13 @@ test('returns the configured public backend origin without caching', async () =>
   const response = await request('/api/config');
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
-  assert.deepEqual(await response.json(), { backendUrl: 'https://chat-api.example' });
+  assert.deepEqual(await response.json(), { backendUrl: 'https://chat-api.example', realtimeAvailable: true });
 });
 
 test('rejects protected routes without a token', async () => {
   const cliqueId = 'c647a93b-60d0-4fc7-a89c-62bd97b58f22';
   for (const route of [
-    '/api/me', '/api/dms', '/api/courses', '/api/status', '/api/posts',
+    '/api/me', '/api/dms', '/api/courses', '/api/status', '/api/posts', '/api/messages/test-room',
     '/api/cliques/discover', '/api/cliques/join-requests',
     `/api/cliques/${cliqueId}/invite`, `/api/cliques/${cliqueId}/members`, `/api/cliques/${cliqueId}/pins`
   ]) {
