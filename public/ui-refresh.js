@@ -40,6 +40,7 @@
     activeAssignment: null,
     activeClique: null,
     activeConversation: null,
+    universityDirectory: null,
     profileImageDraft: null,
     messageView: 'groups',
     callFilter: 'all',
@@ -117,6 +118,7 @@
       <nav class="refresh-mobile-menu" aria-label="Main navigation">${shortNav.map(id => { const item = navItems.find(entry => entry.id === id); return `<button type="button" data-route="${id}"><span>${iconMarkup(item.icon)}</span>${item.label}</button>`; }).join('')}</nav>`;
     content = shell.querySelector('#refreshContent');
     shell.addEventListener('click', onClick);
+    shell.addEventListener('input', onAcademicFieldInput);
     shell.addEventListener('submit', onSubmit);
     shell.addEventListener('change', onChange);
     document.getElementById('appScreen').appendChild(shell);
@@ -590,13 +592,14 @@
             <div class="refresh-field-grid">
               <div class="refresh-field"><label for="profileName">Full name</label><input id="profileName" maxlength="80" autocomplete="name" placeholder="Your full name"></div>
               <div class="refresh-field"><label for="profileEmail">Account email</label><input id="profileEmail" value="${escapeHtml(currentUser.email || '')}" disabled></div>
-              <div class="refresh-field"><label for="profileCourseOfStudy">Course of study</label><input id="profileCourseOfStudy" maxlength="120" placeholder="e.g., B.Sc. Computer Science"></div>
+              <div class="refresh-field"><label for="profileInstitution">University / institution</label><input id="profileInstitution" list="nigerianUniversityOptions" maxlength="180" autocomplete="organization" placeholder="Search or type your university"><datalist id="nigerianUniversityOptions"></datalist><small class="refresh-field-hint" id="universityDirectoryStatus">Loading NUC university directory…</small><small class="refresh-field-hint">If your university isn't listed, type its name.</small></div>
+              <div class="refresh-field"><label for="profileFaculty">Faculty / college</label><input id="profileFaculty" maxlength="120" placeholder="Type the name used by your university" disabled></div>
+              <div class="refresh-field"><label for="profileCourseOfStudy">Course of study / programme</label><input id="profileCourseOfStudy" maxlength="120" placeholder="Type your course or programme" disabled></div>
               <div class="refresh-field"><label for="profileLevel">Level</label><input id="profileLevel" maxlength="60" placeholder="e.g., 300 Level"></div>
               <div class="refresh-field"><label for="profileMatriculationNumber">Matriculation number</label><input id="profileMatriculationNumber" maxlength="80" autocomplete="off"></div>
-              <div class="refresh-field"><label for="profileInstitution">School / Institution</label><input id="profileInstitution" maxlength="180" placeholder="School and college"></div>
               <div class="refresh-field refresh-profile-bio"><label for="profileBio">About you (optional)</label><textarea id="profileBio" maxlength="240" placeholder="A short introduction"></textarea></div>
             </div>
-            <p class="refresh-note">Klasora does not currently verify enrollment or awards. Academic details are private to your account; leave anything blank until you are ready to add it.</p>
+            <p class="refresh-note">The university list is a snapshot from the NUC directory. The NUC does not publish a unified per-university faculty and programme catalog, so enter the exact names used by your school. Klasora does not verify enrollment or awards; these details are private to your account.</p>
           </div>
         </section>
         <aside class="refresh-profile-side">
@@ -620,14 +623,20 @@
       const photo = state.profileImageDraft !== null ? state.profileImageDraft : current.profileImage;
       content.querySelector('#profileHeadingName').textContent = current.name || 'Student';
       content.querySelector('#profilePhotoPreview').innerHTML = pictureMarkup(photo, current.name);
-      content.querySelector('#profileAcademicSummary').textContent = [current.courseOfStudy, current.level].filter(Boolean).join(' · ') || 'Add your course and level to complete your learning identity.';
+      content.querySelector('#profileAcademicSummary').textContent = [current.courseOfStudy, current.faculty, current.level].filter(Boolean).join(' · ') || 'Add your course and institution to complete your learning identity.';
       content.querySelector('#profileInstitutionSummary').textContent = current.institution || '';
       content.querySelector('#profileName').value = current.name || '';
       content.querySelector('#profileCourseOfStudy').value = current.courseOfStudy || '';
       content.querySelector('#profileLevel').value = current.level || '';
       content.querySelector('#profileMatriculationNumber').value = current.matriculationNumber || '';
       content.querySelector('#profileInstitution').value = current.institution || '';
+      content.querySelector('#profileFaculty').value = current.faculty || '';
       content.querySelector('#profileBio').value = current.bio || '';
+      syncAcademicProfileFields();
+      loadUniversityDirectory().catch(error => {
+        const status = content.querySelector('#universityDirectoryStatus');
+        if (state.route === 'profile' && status) status.textContent = `University list unavailable: ${error.message}. You can still type your institution.`;
+      });
     } catch (error) {
       if (state.route === 'profile') {
         content.innerHTML += `<p class="refresh-note">Could not load profile details: ${escapeHtml(error.message)}</p>`;
@@ -1139,6 +1148,43 @@
     }
   }
 
+  function getAcademicProfileFields() {
+    return {
+      institution: content.querySelector('#profileInstitution'),
+      faculty: content.querySelector('#profileFaculty'),
+      courseOfStudy: content.querySelector('#profileCourseOfStudy')
+    };
+  }
+
+  function syncAcademicProfileFields() {
+    window.KlasoraAcademicProfileFields.sync(getAcademicProfileFields());
+  }
+
+  function onAcademicFieldInput(event) {
+    const changedField = {
+      profileInstitution: 'institution',
+      profileFaculty: 'faculty'
+    }[event.target.id];
+    if (!changedField) return;
+    window.KlasoraAcademicProfileFields.resetAfterEdit(getAcademicProfileFields(), changedField);
+  }
+
+  async function loadUniversityDirectory() {
+    if (!state.universityDirectory) {
+      const response = await fetch('/data/nigerian-universities.json');
+      if (!response.ok) throw new Error('Could not load the saved university list');
+      const directory = await response.json();
+      state.universityDirectory = Object.entries(directory.universities)
+        .flatMap(([type, names]) => names.map(name => ({ name, type })));
+    }
+    if (state.route !== 'profile') return;
+    const list = content.querySelector('#nigerianUniversityOptions');
+    const status = content.querySelector('#universityDirectoryStatus');
+    if (!list || !status) return;
+    window.KlasoraAcademicProfileFields.populateUniversityOptions(list, state.universityDirectory);
+    status.textContent = `${state.universityDirectory.length} universities listed by the NUC · choose one or type another.`;
+  }
+
   async function compressProfileImage(file) {
     if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
     if (file.size > 10 * 1024 * 1024) throw new Error('The original image must be under 10 MB.');
@@ -1376,13 +1422,13 @@
     const name = content.querySelector('#profileName')?.value.trim();
     const bio = content.querySelector('#profileBio')?.value.trim();
     if (!name || name.length < 2) { toast('Enter a name with at least two characters.'); return; }
+    const academicFields = window.KlasoraAcademicProfileFields.values(getAcademicProfileFields());
     const changes = {
       name,
       bio,
-      courseOfStudy: content.querySelector('#profileCourseOfStudy')?.value.trim() || '',
+      ...academicFields,
       level: content.querySelector('#profileLevel')?.value.trim() || '',
       matriculationNumber: content.querySelector('#profileMatriculationNumber')?.value.trim() || '',
-      institution: content.querySelector('#profileInstitution')?.value.trim() || ''
     };
     if (state.profileImageDraft !== null) changes.profileImage = state.profileImageDraft;
     try {

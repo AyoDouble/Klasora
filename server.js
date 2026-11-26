@@ -338,6 +338,7 @@ const profileUser = async u => {
   return {
     ...safeUser(u),
     courseOfStudy: u.courseOfStudy || '',
+    faculty: u.faculty || '',
     level: u.level || '',
     matriculationNumber: u.matriculationNumber || '',
     institution: u.institution || '',
@@ -569,6 +570,7 @@ app.patch('/api/me/profile', auth, async (req, res) => {
 
   const fields = {
     courseOfStudy: 120,
+    faculty: 120,
     level: 60,
     matriculationNumber: 80,
     institution: 180
@@ -580,6 +582,9 @@ app.patch('/api/me/profile', auth, async (req, res) => {
       return res.status(400).json({ error: `${field} must be ${maxLength} characters or less` });
     }
     update[field] = req.body[field].trim();
+  }
+  if (update.faculty && !update.institution?.trim()) {
+    return res.status(400).json({ error: 'Choose or enter a university before adding a faculty or college' });
   }
 
   let profileImage;
