@@ -1,19 +1,32 @@
 const REACTION_TYPES = new Set(['like', 'love', 'celebrate', 'insightful']);
 const POST_CATEGORIES = new Set(['Campus', 'Study resources', 'Questions', 'Wins']);
 const POST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const COMMUNITY_SCHEMA_TABLES = ['community_posts', 'community_post_comments', 'community_post_reactions'];
+const MISSING_SCHEMA_CODES = new Set(['PGRST205', '42P01']);
 
 const getValue = (row, snakeKey, camelKey) => row?.[snakeKey] ?? row?.[camelKey];
 const getInitials = name => String(name || '?').trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
 const getTimestamp = row => getValue(row, 'created_at', 'createdAt');
 
+const inspectCommunityPostSchema = async supabase => {
+  const checks = await Promise.all(COMMUNITY_SCHEMA_TABLES.map(async table => {
+    const { error } = await supabase.from(table).select('id').limit(0);
+    return { table, error };
+  }));
+  return {
+    missingTables: checks.filter(({ error }) => MISSING_SCHEMA_CODES.has(error?.code)).map(({ table }) => table),
+    errorCodes: checks.filter(({ error }) => error && !MISSING_SCHEMA_CODES.has(error.code)).map(({ error }) => error.code || 'unknown')
+  };
+};
+
 const createCommunityPostHandlers = ({ supabase, io }) => {
-  const unavailable = res => res.status(503).json({ error: 'Community posts are not configured' });
+  const unavailable = res => res.status(503).json({ error: 'Community feed storage is unavailable because Supabase is not configured on the backend.' });
   const withSchemaErrors = handler => async (req, res) => {
     try {
       return await handler(req, res);
     } catch (error) {
       if (['PGRST205', '42P01'].includes(error?.code)) {
-        return res.status(503).json({ error: 'Community feed storage is not initialized. Apply supabase/schema.sql and try again.' });
+        return res.status(503).json({ error: 'Community feed tables are missing or unavailable.' });
       }
       throw error;
     }
@@ -213,4 +226,4 @@ const createCommunityPostHandlers = ({ supabase, io }) => {
   };
 };
 
-module.exports = { createCommunityPostHandlers };
+module.exports = { createCommunityPostHandlers, inspectCommunityPostSchema };

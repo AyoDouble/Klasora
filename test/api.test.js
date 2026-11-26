@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const { getAuthRedirectUrl } = require('../auth-redirect');
-const { createCommunityPostHandlers } = require('../community-posts');
+const { createCommunityPostHandlers, inspectCommunityPostSchema } = require('../community-posts');
 
 const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-that-is-at-least-32-characters-long';
 let baseUrl;
@@ -473,7 +473,42 @@ test('validates community post inputs before database access', async () => {
 
   const unavailableFeed = await request('/api/posts', { headers: { authorization: `Bearer ${token}` } });
   assert.equal(unavailableFeed.status, 503);
-  assert.match(await unavailableFeed.text(), /apply supabase\/schema\.sql/i);
+  assert.match(await unavailableFeed.text(), /Community feed tables are missing or unavailable/i);
+});
+
+test('checks community table readiness and maps missing tables to service unavailable', async () => {
+  const missingTable = 'community_post_comments';
+  const supabase = {
+    from(table) {
+      return {
+        select() { return this; },
+        limit() {
+          return Promise.resolve({
+            data: null,
+            error: table === missingTable ? { code: 'PGRST205' } : null
+          });
+        }
+      };
+    }
+  };
+  const readiness = await inspectCommunityPostSchema(supabase);
+  assert.deepEqual(readiness, { missingTables: [missingTable], errorCodes: [] });
+
+  const handlers = createCommunityPostHandlers({
+    supabase: {
+      from() {
+        return {
+          select() { return this; },
+          order() { return this; },
+          limit() { return { data: null, error: { code: 'PGRST205' } }; }
+        };
+      }
+    },
+    io: { emit() {} }
+  });
+  const response = await invokeHandler(handlers.list, { userId: 'test-user' });
+  assert.equal(response.statusCode, 503);
+  assert.match(response.body.error, /Community feed tables are missing or unavailable/i);
 });
 
 test('serves shared posts with author, reply count, and per-user reactions', async () => {

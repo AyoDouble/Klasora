@@ -12,7 +12,7 @@ const path       = require('path');
 const multer     = require('multer');
 const webpush    = require('web-push');
 const { getAuthRedirectUrl } = require('./auth-redirect');
-const { createCommunityPostHandlers } = require('./community-posts');
+const { createCommunityPostHandlers, inspectCommunityPostSchema } = require('./community-posts');
 const {
   MAX_CHAT_UPLOAD_BYTES,
   MAX_COURSE_UPLOAD_BYTES,
@@ -1605,7 +1605,26 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
-  server.listen(PORT, () => console.log(`🚀 Klasora v2 running on http://localhost:${PORT}`));
+  server.listen(PORT, () => {
+    console.log(`🚀 Klasora v2 running on http://localhost:${PORT}`);
+    if (!supabase) {
+      console.warn('[community-feed] Supabase is not configured; shared campus posts are unavailable.');
+      return;
+    }
+    void inspectCommunityPostSchema(supabase).then(({ missingTables, errorCodes }) => {
+      if (missingTables.length) {
+        console.warn(`[community-feed] Missing table(s): ${missingTables.join(', ')}. In the Supabase project connected to this backend, run supabase/schema.sql from Dashboard → SQL Editor → New query.`);
+      }
+      if (errorCodes.length) {
+        console.warn(`[community-feed] Schema readiness check returned Supabase error code(s): ${errorCodes.join(', ')}. Verify the backend connection and table permissions.`);
+      }
+      if (!missingTables.length && !errorCodes.length) {
+        console.info('[community-feed] Required community tables are available.');
+      }
+    }).catch(error => {
+      console.warn(`[community-feed] Could not verify schema readiness; check Supabase connectivity. Error code: ${error?.code || 'unknown'}`);
+    });
+  });
 }
 
 module.exports = app;
