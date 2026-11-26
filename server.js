@@ -13,6 +13,13 @@ const multer     = require('multer');
 const webpush    = require('web-push');
 const { getAuthRedirectUrl } = require('./auth-redirect');
 const { createCommunityPostHandlers } = require('./community-posts');
+const {
+  MAX_CHAT_UPLOAD_BYTES,
+  MAX_COURSE_UPLOAD_BYTES,
+  UploadValidationError,
+  inspectUpload,
+  sanitizeProfileImage
+} = require('./upload-validation');
 
 const app    = express();
 const server = http.createServer(app);
@@ -25,10 +32,25 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── FILE UPLOADS ──────────────────────────────────────────────
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
-const courseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_CHAT_UPLOAD_BYTES } });
+const courseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_COURSE_UPLOAD_BYTES } });
 const CHAT_FILE_BUCKET = 'chat-files';
 const PROFILE_IMAGE_BUCKET = 'profile-images';
+const withUploadLimit = (middleware, limitBytes) => (req, res, next) => middleware(req, res, error => {
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: `File must be no larger than ${limitBytes / 1024 / 1024} MB` });
+  }
+  next(error);
+});
+const removeStoredObject = async (bucket, storagePath, context) => {
+  if (!storagePath) return;
+  try {
+    const { error } = await supabase.storage.from(bucket).remove([storagePath]);
+    if (error) throw error;
+  } catch (error) {
+    console.error(`${context} cleanup failed:`, error);
+  }
+};
 
 // ── WEB PUSH ──────────────────────────────────────────────────
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -92,7 +114,24 @@ const hydrateMembers = async (memberIds = []) => {
   if (!supabase || !Array.isArray(memberIds) || !memberIds.length) return [];
   const { data, error } = await supabase.from('users').select('*').in('id', memberIds);
   if (error) throw error;
-  return (data || []).map(normalizeUser);
+  return Promise.all((data || []).map(async row => {
+    const member = normalizeUser(row);
+    let profileImage = null;
+    if (member.profileImagePath) {
+      const { data: signedImage, error: signedImageError } = await supabase.storage
+        .from(PROFILE_IMAGE_BUCKET)
+        .createSignedUrl(member.profileImagePath, 60 * 60);
+      if (signedImageError) throw signedImageError;
+      profileImage = signedImage.signedUrl;
+    }
+    return {
+      _id: member._id,
+      name: member.name,
+      color: member.color,
+      online: member.online,
+      profileImage
+    };
+  }));
 };
 
 const toDbPayload = (obj = {}) => {
@@ -596,20 +635,32 @@ app.patch('/api/me/profile', auth, async (req, res) => {
   if (req.body.profileImage !== undefined) {
     const match = typeof req.body.profileImage === 'string' && req.body.profileImage.match(/^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/);
     if (!match) return res.status(400).json({ error: 'Profile picture must be a compressed WebP image' });
-    profileImage = Buffer.from(match[1], 'base64');
-    if (!profileImage.length || profileImage.length > 400 * 1024 || profileImage.toString('base64') !== match[1]) {
+    const inputImage = Buffer.from(match[1], 'base64');
+    if (!inputImage.length || inputImage.length > 400 * 1024 || inputImage.toString('base64') !== match[1]) {
       return res.status(400).json({ error: 'Profile picture must be 400 KB or smaller' });
+    }
+    try {
+      profileImage = await sanitizeProfileImage(inputImage);
+    } catch (error) {
+      if (error instanceof UploadValidationError) return res.status(400).json({ error: error.message });
+      throw error;
     }
   }
 
   if (!supabase) return res.status(503).json({ error: 'Academic profile storage is not configured' });
+  let newProfileImagePath;
+  let oldProfileImagePath;
+  let profileImagePersisted = false;
   if (profileImage) {
-    const profileImagePath = `${req.userId}/profile.webp`;
+    const currentUser = await User.findById(req.userId);
+    if (!currentUser) return res.status(404).json({ error: 'Profile not found' });
+    oldProfileImagePath = currentUser.profileImagePath;
+    newProfileImagePath = `${req.userId}/${crypto.randomUUID()}.webp`;
     let error;
     try {
-      ({ error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(profileImagePath, profileImage, {
+      ({ error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(newProfileImagePath, profileImage, {
         contentType: 'image/webp',
-        upsert: true
+        upsert: false
       }));
     } catch (e) {
       console.error('Profile picture upload failed:', e);
@@ -619,15 +670,23 @@ app.patch('/api/me/profile', auth, async (req, res) => {
       console.error('Profile picture upload failed:', error);
       return res.status(500).json({ error: 'Unable to save your profile picture' });
     }
-    update.profileImagePath = profileImagePath;
+    update.profileImagePath = newProfileImagePath;
   }
 
   try {
     const u = await User.findByIdAndUpdate(req.userId, update, { new: true });
-    if (!u) return res.status(404).json({ error: 'Profile not found' });
+    if (!u) {
+      await removeStoredObject(PROFILE_IMAGE_BUCKET, newProfileImagePath, 'Profile picture');
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    profileImagePersisted = true;
+    if (oldProfileImagePath && oldProfileImagePath !== newProfileImagePath) {
+      await removeStoredObject(PROFILE_IMAGE_BUCKET, oldProfileImagePath, 'Old profile picture');
+    }
     res.set('Cache-Control', 'no-store');
     res.json(await profileUser(u));
   } catch (e) {
+    if (!profileImagePersisted) await removeStoredObject(PROFILE_IMAGE_BUCKET, newProfileImagePath, 'Profile picture');
     console.error('Profile update failed:', e);
     res.status(500).json({ error: 'Unable to save your academic profile' });
   }
@@ -797,7 +856,7 @@ app.get('/api/cliques/:id/members', auth, async (req, res) => {
     const clique = await Clique.findById(req.params.id);
     if (!clique || !courseHasMember(clique, req.userId)) return res.status(404).json({ error: 'Clique not found' });
     const members = await hydrateMembers(clique.members || []);
-    res.json(members.map(member => ({ _id: member._id, name: member.name, color: member.color, online: member.online })));
+    res.json(members.map(member => ({ _id: member._id, name: member.name, color: member.color, online: member.online, profileImage: member.profileImage })));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -973,34 +1032,42 @@ app.post('/api/courses/:id/file-folders', auth, async (req, res) => {
   }
 });
 
-app.post('/api/courses/:id/files', auth, courseUpload.single('file'), async (req, res) => {
+app.post('/api/courses/:id/files', auth, withUploadLimit(courseUpload.single('file'), MAX_COURSE_UPLOAD_BYTES), async (req, res) => {
+  let storagePath;
   try {
     if (!await isCourseMember(req.params.id, req.userId)) return res.status(403).json({ error: 'You are not a member of this course' });
     if (!req.file) return res.status(400).json({ error: 'Choose a file to upload' });
     if (!supabase) throw new Error('Supabase is not configured');
-    const safeName = req.file.originalname.replace(/[^a-z0-9._-]/gi, '_');
-    const storagePath = `${req.params.id}/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage.from('course-files').upload(storagePath, req.file.buffer, {
-      contentType: req.file.mimetype,
-      upsert: false
-    });
-    if (uploadError) throw uploadError;
+    let inspected;
+    try {
+      inspected = await inspectUpload(req.file.buffer);
+    } catch (error) {
+      if (error instanceof UploadValidationError) return res.status(400).json({ error: error.message });
+      throw error;
+    }
     const folderId = req.body.folderId?.trim() || null;
     if (folderId) {
       const folder = await CourseFileFolder.findById(folderId);
       if (!folder || folder.courseId !== req.params.id) return res.status(400).json({ error: 'Invalid course folder' });
     }
+    storagePath = `${req.params.id}/${crypto.randomUUID()}`;
+    const { error: uploadError } = await supabase.storage.from('course-files').upload(storagePath, req.file.buffer, {
+      contentType: inspected.mimeType,
+      upsert: false
+    });
+    if (uploadError) throw uploadError;
     const file = await CourseFile.create({
       courseId: req.params.id,
       uploadedBy: req.userId,
       name: req.file.originalname.slice(0, 255),
       storagePath,
-      mimeType: req.file.mimetype,
+      mimeType: inspected.mimeType,
       size: req.file.size,
       folderId
     });
     res.json(file);
   } catch (e) {
+    await removeStoredObject('course-files', storagePath, 'Course file');
     console.error('Course file upload failed:', e);
     res.status(500).json({ error: 'Unable to upload this course file' });
   }
@@ -1086,28 +1153,36 @@ app.get('/api/messages/:roomId', auth, async (req, res) => {
 });
 
 // ── FILE UPLOAD ───────────────────────────────────────────────
-app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
+app.post('/api/upload', auth, withUploadLimit(upload.single('file'), MAX_CHAT_UPLOAD_BYTES), async (req, res) => {
+  let storagePath;
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    let inspected;
+    try {
+      inspected = await inspectUpload(req.file.buffer);
+    } catch (error) {
+      if (error instanceof UploadValidationError) return res.status(400).json({ error: error.message });
+      throw error;
+    }
     if (!supabase) return res.status(503).json({ error: 'File storage is not configured' });
-    const safeName = req.file.originalname.replace(/[^a-z0-9._-]/gi, '_').slice(0, 120);
-    const storagePath = `${req.userId}/${crypto.randomUUID()}-${safeName}`;
+    storagePath = `${req.userId}/${crypto.randomUUID()}`;
     const { error: uploadError } = await supabase.storage.from(CHAT_FILE_BUCKET).upload(storagePath, req.file.buffer, {
-      contentType: req.file.mimetype,
+      contentType: inspected.mimeType,
       upsert: false
     });
     if (uploadError) throw uploadError;
     const { data, error: urlError } = await supabase.storage.from(CHAT_FILE_BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365);
     if (urlError) throw urlError;
-    const isImage = req.file.mimetype.startsWith('image/');
+    const isImage = inspected.mimeType.startsWith('image/');
     res.json({
       url: data.signedUrl,
       name: req.file.originalname,
       size: req.file.size,
       isImage,
-      isAudio: req.file.mimetype.startsWith('audio/')
+      isAudio: inspected.mimeType.startsWith('audio/')
     });
   } catch (e) {
+    await removeStoredObject(CHAT_FILE_BUCKET, storagePath, 'Chat file');
     console.error('Chat file upload failed:', e);
     res.status(500).json({ error: 'Unable to upload this file' });
   }

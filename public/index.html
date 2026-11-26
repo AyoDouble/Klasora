@@ -229,7 +229,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .msg-group.inc{align-items:flex-start;}
 .msg-row{display:flex;align-items:flex-end;gap:0.4rem;}
 .msg-group.out .msg-row{flex-direction:row-reverse;}
-.mavatar{width:24px;height:24px;border-radius:50%;font-size:0.58rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mavatar{width:24px;height:24px;border-radius:50%;font-size:0.58rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.mavatar img,.workspace-detail-avatar img{width:100%;height:100%;border-radius:inherit;object-fit:cover;}
 .mavatar.ghost{opacity:0;}
 .bubble{max-width:min(68%,620px);padding:0.62rem 0.9rem;border-radius:18px;font-size:0.82rem;line-height:1.55;position:relative;word-break:break-word;box-shadow:0 3px 12px rgba(0,0,0,.08);}
 .msg-group.out .bubble{background:linear-gradient(135deg,#766eff,var(--msg-out));color:white;border-bottom-right-radius:6px;}
@@ -1295,7 +1296,7 @@ async function renderCallsPanel(){
   try{
     const dms=await api('/api/dms');
     allItems=dms;
-    const rows=dms.filter(dm=>getOther(dm)).slice(0,8).map(dm=>{const o=getOther(dm);return `<div class="wa-call-row"><div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}</div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="wa-panel-sub">No recent calls</div></div><button class="wa-action" aria-label="Call ${esc(o.name)}" onclick="startCallFromList('${o._id}','${esc(o.name).replace(/'/g,"&#39;")}','${o.color||'#087e7b'}')">${window.KlasoraIcons.markup('phone-call')}</button></div>`;}).join('');
+    const rows=dms.filter(dm=>getOther(dm)).slice(0,8).map(dm=>{const o=getOther(dm);return `<div class="wa-call-row"><div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${avatarMarkup(o)}</div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="wa-panel-sub">No recent calls</div></div><button class="wa-action" aria-label="Call ${esc(o.name)}" onclick="startCallFromList('${o._id}','${esc(o.name).replace(/'/g,"&#39;")}','${o.color||'#087e7b'}')">${window.KlasoraIcons.markup('phone-call')}</button></div>`;}).join('');
     document.getElementById('listSec').innerHTML=`<div class="wa-panel"><div class="wa-panel-head"><div><div class="wa-panel-title">Calls</div><div class="wa-panel-sub">Voice and video calls</div></div><button class="wa-action" onclick="showToast('📞','Start a call','Open a chat to call someone')">${window.KlasoraIcons.markup('plus')} New call</button></div>${rows||'<div class="wa-empty-card">Your recent calls will appear here.</div>'}</div>`;
   }catch(e){document.getElementById('listSec').innerHTML=`<div class="wa-empty-card">${esc(e.message)}</div>`;}
 }
@@ -1327,7 +1328,7 @@ function renderList(items,filter=''){
     const time=item.lastAt?fmtTime(new Date(item.lastAt)):'', preview=item.lastMsg||'Say something!';
     if(item._chatType==='dm'||sideTab==='dms'){
       const o=getOther(item); if(!o)return;
-      div.innerHTML=`<div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${ini(o.name)}<div class="av-dot dot-off" data-pres="${o._id}"></div></div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
+      div.innerHTML=`<div class="avatar" style="background:${o.color||'#087e7b'}22;color:${o.color||'#087e7b'}">${avatarMarkup(o)}<div class="av-dot dot-off" data-pres="${o._id}"></div></div><div class="li-info"><div class="li-name">${esc(o.name)}</div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
     } else if(item._chatType==='clique'||sideTab==='cliques') {
       div.innerHTML=`<div class="c-icon" style="background:${item.color||'#087e7b'}22;">${window.KlasoraIcons.markup(item.emoji||'link')}</div><div class="li-info"><div class="li-name">${esc(item.name)} <span style="font-size:0.57rem;color:var(--accent2);background:var(--glow);padding:1px 5px;border-radius:7px;">CLIQUE</span></div><div class="li-prev">${esc(preview).slice(0,38)}</div></div><div class="li-time">${time}</div>`;
     } else {
@@ -1390,7 +1391,7 @@ async function openChat(item){
   const isClique=activeType==='clique';
   const isCourse=activeType==='course';
   if(!isClique&&!isCourse){
-    const o=getOther(item); av.textContent=ini(o.name); av.style.background=o.color+'22'; av.style.color=o.color; av.style.borderRadius='50%';
+    const o=getOther(item); av.innerHTML=avatarMarkup(o); av.style.background=o.color+'22'; av.style.color=o.color; av.style.borderRadius='50%';
     document.getElementById('chName').textContent=o.name; document.getElementById('chSub').innerHTML=`${window.KlasoraIcons.markup('circle')} ${o.online?'Online':'Offline'}`;
     document.getElementById('membersBtn').style.display='none';
     document.getElementById('courseFilesBtn').style.display='none';
@@ -1433,8 +1434,8 @@ function renderWorkspaceDetails(item){
   const title=isCourse?'Course space':isClique?'Clique':'Direct message';
   const detail=isCourse?(item.code||'Course workspace'):isClique?`${item.members?.length||0} members · Study and chat together`:(other?.online?'Online now':'Your private conversation');
   const description=isCourse?item.description:'';
-  const members=(item.members||[]).slice(0,5).map(member=>`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${esc(ini(member.name))}</span><span>${esc(member.name||'Clique member')}</span></div>`).join('');
-  const person=other?`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${esc(ini(other.name))}</span><span>${esc(other.name)}</span></div>`:'';
+  const members=(item.members||[]).slice(0,5).map(member=>`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${avatarMarkup(member)}</span><span>${esc(member.name||'Clique member')}</span></div>`).join('');
+  const person=other?`<div class="workspace-detail-person"><span class="workspace-detail-avatar">${avatarMarkup(other)}</span><span>${esc(other.name)}</span></div>`:'';
   const isCliqueAdmin=isClique&&String(item.createdBy||'')===String(myUser._id||'');
   const actions=isCourse?`<button type="button" class="workspace-detail-action" onclick="showCourseFiles()">${window.KlasoraIcons.markup('book-open')} <span>Browse course files</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="showMembers()">${window.KlasoraIcons.markup('user-round')} <span>View classmates</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>`:isClique?`<button type="button" class="workspace-detail-action" onclick="showMembers()">${window.KlasoraIcons.markup('user-round')} <span>View members</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliquePins()">${window.KlasoraIcons.markup('locate-fixed')} <span>Pinned messages</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.shareCliqueInvite()">${window.KlasoraIcons.markup('arrow-up-right')} <span>Copy invite link</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>${isCliqueAdmin?`<button type="button" class="workspace-detail-action" onclick="window.KlasoraRefresh?.openCliqueRequests()">${window.KlasoraIcons.markup('check')} <span>Review join requests</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>`:''}`:`<button type="button" class="workspace-detail-action" onclick="startCall('voice')">${window.KlasoraIcons.markup('phone-call')} <span>Start voice call</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button><button type="button" class="workspace-detail-action" onclick="startCall('video')">${window.KlasoraIcons.markup('video')} <span>Start video call</span> <b>${window.KlasoraIcons.markup('arrow-right')}</b></button>`;
   const emblem=isCourse?'book-open':isClique?(item.emoji||'users-round'):'users-round';
@@ -1455,7 +1456,7 @@ function renderMsgs(msgs,item){
 
 function buildMsgRow(gel,msg,g,isMe,isLast,isClique){
   const row=document.createElement('div'); row.className='msg-row';
-  if(!isMe){ const av=document.createElement('div'); av.className='mavatar'+(isLast?'':' ghost'); if(isLast){av.textContent=ini(g.sName||'?');av.style.background=(g.sColor||'#087e7b')+'22';av.style.color=g.sColor||'#087e7b';} row.appendChild(av); }
+  if(!isMe){ const av=document.createElement('div'); av.className='mavatar'+(isLast?'':' ghost'); if(isLast){const sender=g.sid?item.members?.find(member=>String(member._id)===String(g.sid)):null;av.innerHTML=avatarMarkup(sender||{name:g.sName});av.style.background=(g.sColor||'#087e7b')+'22';av.style.color=g.sColor||'#087e7b';} row.appendChild(av); }
   const bubble=document.createElement('div'); bubble.className='bubble'+(msg.type==='ai'?' ai-bubble':''); bubble.dataset.msgid=msg._id;
   const reactions=EMOJIS.slice(0,6).map(({icon})=>`<button class="react-btn" aria-label="React with ${icon}" onclick="doReact('${msg._id}','${icon}');closeMessageMenus()">${window.KlasoraIcons.markup(icon)}</button>`).join('');
   const downloadAction=(msg.type==='file'||msg.type==='image'||msg.type==='voice')&&msg.fileUrl?`<button class="message-menu-download" onclick="downloadMessageFile('${msg.fileUrl}','${msg.fileName||'download'}')">Download</button>`:'';
@@ -2047,7 +2048,7 @@ async function createCourse(){
 function buildCliqueEmojiGrid(){ const g=document.getElementById('cEmojiGrid'); g.innerHTML=''; CLIQUE_ICONS.forEach((icon,i)=>{const el=document.createElement('button');el.type='button';el.className='eg-opt'+(i===0?' selected':'');el.setAttribute('aria-label',`Clique icon ${i+1}`);el.innerHTML=window.KlasoraIcons.markup(icon);el.onclick=()=>{selCliqueEmoji=icon;document.querySelectorAll('.eg-opt').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');};g.appendChild(el);}); }
 
 // ── MEMBERS ───────────────────────────────────────────────────
-async function showMembers(){ const item=allItems.find(x=>x._id===activeId);if(!item)return; document.getElementById('membersCliqueName').textContent=item.name; const ml=document.getElementById('membersList'); ml.innerHTML=`<div class="loading-row"><div class="spinner"></div></div>`; const canInvite=activeType==='course'||String(item.createdBy||'')===String(myUser._id||''); document.getElementById('addMemberEmail').hidden=!canInvite; document.querySelector('#membersModal .modal-acts .mbtn.pri').hidden=!canInvite; openModal('membersModal'); try{const members=activeType==='course'?(await api(`/api/courses/${item._id}`)).members||[]:await api(`/api/cliques/${item._id}/members`);ml.innerHTML='';members.forEach(p=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:0.7rem;padding:0.5rem 0;border-bottom:1px solid var(--border);';row.innerHTML=`<div class="avatar" style="background:${p.color||'#087e7b'}22;color:${p.color||'#087e7b'};width:32px;height:32px;font-size:0.72rem;">${ini(p.name)}</div><div><div style="font-size:0.81rem;font-weight:600;">${esc(p.name)}</div></div>`;ml.appendChild(row);});}catch(e){ml.textContent=e.message;} }
+async function showMembers(){ const item=allItems.find(x=>x._id===activeId);if(!item)return; document.getElementById('membersCliqueName').textContent=item.name; const ml=document.getElementById('membersList'); ml.innerHTML=`<div class="loading-row"><div class="spinner"></div></div>`; const canInvite=activeType==='course'||String(item.createdBy||'')===String(myUser._id||''); document.getElementById('addMemberEmail').hidden=!canInvite; document.querySelector('#membersModal .modal-acts .mbtn.pri').hidden=!canInvite; openModal('membersModal'); try{const members=activeType==='course'?(await api(`/api/courses/${item._id}`)).members||[]:await api(`/api/cliques/${item._id}/members`);ml.innerHTML='';members.forEach(p=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:0.7rem;padding:0.5rem 0;border-bottom:1px solid var(--border);';row.innerHTML=`<div class="avatar" style="background:${p.color||'#087e7b'}22;color:${p.color||'#087e7b'};width:32px;height:32px;font-size:0.72rem;">${avatarMarkup(p)}</div><div><div style="font-size:0.81rem;font-weight:600;">${esc(p.name)}</div></div>`;ml.appendChild(row);});}catch(e){ml.textContent=e.message;} }
 async function addMemberToClique(){ const email=document.getElementById('addMemberEmail').value.trim().toLowerCase(); const err=document.getElementById('addMemberErr'); err.style.display='none'; try{const u=await api(`/api/users/search?email=${encodeURIComponent(email)}`);await api(activeType==='course'?`/api/courses/${activeId}/invite`:`/api/cliques/${activeId}/members`,'POST',activeType==='course'?{email}:{userId:u._id});document.getElementById('addMemberEmail').value='';showMembers();loadList();}catch(e){err.textContent=e.message;err.style.display='block';} }
 async function showCourseFiles(){
   if(activeType!=='course')return;
@@ -2132,6 +2133,7 @@ function overlayClose(e,id){ if(e.target===document.getElementById(id))closeModa
 
 // ── UTILS ─────────────────────────────────────────────────────
 function ini(n){ return String(n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function avatarMarkup(person){ return person?.profileImage?`<img src="${esc(person.profileImage)}" alt="">`:esc(ini(person?.name)); }
 function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(d){ return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
 function fmtDate(d){ const t=new Date(),y=new Date(t);y.setDate(t.getDate()-1);if(d.toDateString()===t.toDateString())return 'Today';if(d.toDateString()===y.toDateString())return 'Yesterday';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }

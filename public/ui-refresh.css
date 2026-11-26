@@ -209,6 +209,7 @@
 .refresh-clique-row:hover,.refresh-assignment-row:hover { border-color: var(--refresh-accent); transform: translateY(-1px); }
 .refresh-clique-row { cursor: pointer; }
 .refresh-clique-emblem { display: grid; width: 46px; height: 46px; flex: 0 0 auto; place-items: center; border-radius: 14px; color: var(--refresh-accent); background: var(--refresh-accent-soft); font-size: 21px; }
+.refresh-clique-emblem img { width:100%; height:100%; border-radius:inherit; object-fit:cover; }
 .refresh-row-info { min-width: 0; flex: 1; }
 .refresh-row-info strong,.refresh-row-info span { display: block; }
 .refresh-row-info strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

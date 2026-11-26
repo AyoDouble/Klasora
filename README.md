@@ -66,7 +66,7 @@ Klasora is a real-time student social and study app built for university student
 ## Getting started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org) v18 or higher
+- [Node.js](https://nodejs.org) v20.9 or higher
 - A [Supabase](https://supabase.com) account with a new project
 - A [Railway](https://railway.app) account (for deployment)
 
@@ -86,7 +86,7 @@ npm install
 2. Open the SQL editor and run the migration in `supabase/schema.sql`.
 3. Copy your project URL and anon/service keys from the Supabase dashboard.
 
-The schema creates private `course-files`, `chat-files`, and `profile-images` Storage buckets. Course documents, chat attachments, voice notes, and compressed profile pictures are uploaded through the authenticated server and are not stored on the application filesystem.
+The schema creates private `course-files`, `chat-files`, and `profile-images` Supabase Storage buckets (object storage). Uploads go through the authenticated server, which checks actual file content, sets MIME metadata from that inspection, and enforces 25 MB course-file, 10 MB chat-attachment, and 400 KB profile-image limits. Profile images are decoded and re-encoded as WebP. Stored object keys are random and do not contain the original filename; display names remain in the app's metadata. Temporary signed URLs are used to display private profile images only to the signed-in user and their conversation participants.
 For an existing project, rerun `supabase/schema.sql` after pulling updates to create any newly added tables, including the shared community posts, replies, and reactions. Existing cliques default to private so they are not exposed by public discovery. Clique creators are the admins for approvals and pins; the server also checks clique membership before allowing room access and message actions.
 4. In Supabase **Authentication → URL Configuration**, set the Site URL to your
    production URL, `https://klasora.vercel.app`. Add `https://klasora.vercel.app/**`
@@ -307,7 +307,7 @@ Klasora works on all screen sizes:
 ## Campus workspace
 The responsive campus workspace adds a community feed, clique overview and study-room preview, study capsule and focus challenge, weekly timetable, academic profile, and assignment detail screens. Existing sign-in, password recovery, chat, course, assignment, and focus-stat APIs remain in use.
 
-Community posts and comments, timetable entries, and the study-room timer are local browser experiences because the current backend does not provide services for those features. Academic profile fields are stored on the signed-in user's account; profile pictures are compressed in the browser and stored in the private `profile-images` bucket. Profile details are retrieved through the authenticated self-profile endpoint and are not added to public user/chat responses. The profile marks academic details as self-reported because Klasora does not currently verify enrollment or awards. Its course-space count comes from the signed-in user's course memberships, recent-post activity is limited to the latest 100 campus-feed posts, and focus-session totals use the existing authenticated stats endpoint; streaks, mentors, and followers are not tracked.
+Community posts and comments, timetable entries, and the study-room timer are local browser experiences because the current backend does not provide services for those features. Academic profile fields are stored on the signed-in user's account; private profile pictures are stored in the `profile-images` bucket. Academic details are available only through the authenticated self-profile endpoint. Conversation participant responses expose only identity fields and a temporary signed image URL, never the storage path or academic/account details. The profile marks academic details as self-reported because Klasora does not currently verify enrollment or awards. Its course-space count comes from the signed-in user's course memberships, recent-post activity is limited to the latest 100 campus-feed posts, and focus-session totals use the existing authenticated stats endpoint; streaks, mentors, and followers are not tracked.
 
 The academic profile's university autocomplete uses a static snapshot of the National Universities Commission (NUC) [federal](https://www.nuc.edu.ng/nigerian-univerisities/federal-univeristies/), [state](https://www.nuc.edu.ng/nigerian-univerisities/state-univerisity/), and [private](https://www.nuc.edu.ng/nigerian-univerisities/private-univeristies/) university listings, retrieved on 2026-11-26. Type an institution name if it is not in the snapshot. The NUC directory does not provide a per-university faculty, department, or programme catalog, so those dependent fields are entered by the student, enabled in university-to-faculty-to-department order, and cleared when their parent selection changes. Use **Save academic details** to approve and persist the profile changes. The `users.faculty` and `users.department` fields are included in `supabase/schema.sql`; rerun that schema in Supabase when deploying this change.
 
