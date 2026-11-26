@@ -659,16 +659,16 @@ test('validates academic profile fields before storage access', async () => {
   assert.match(await response.text(), /courseOfStudy must be 120 characters or less/);
 });
 
-test('validates faculty length and requires an institution before a faculty', async () => {
+test('validates academic hierarchy lengths and requires parent selections', async () => {
   const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
   const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
   const tooLong = await request('/api/me/profile', {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ name: 'Test User', bio: '', institution: 'Test University', faculty: 'x'.repeat(121) })
+    body: JSON.stringify({ name: 'Test User', bio: '', institution: 'Test University', faculty: 'Faculty of Science', department: 'x'.repeat(121) })
   });
   assert.equal(tooLong.status, 400);
-  assert.match(await tooLong.text(), /faculty must be 120 characters or less/);
+  assert.match(await tooLong.text(), /department must be 120 characters or less/);
 
   const missingInstitution = await request('/api/me/profile', {
     method: 'PATCH',
@@ -677,6 +677,14 @@ test('validates faculty length and requires an institution before a faculty', as
   });
   assert.equal(missingInstitution.status, 400);
   assert.match(await missingInstitution.text(), /Choose or enter a university/);
+
+  const missingFaculty = await request('/api/me/profile', {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ name: 'Test User', bio: '', institution: 'Test University', department: 'Computer Science' })
+  });
+  assert.equal(missingFaculty.status, 400);
+  assert.match(await missingFaculty.text(), /Choose or enter a faculty or college/);
 });
 
 test('rejects unsupported profile image formats', async () => {

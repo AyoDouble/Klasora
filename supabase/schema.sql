@@ -9,6 +9,7 @@ create table if not exists users (
   bio text not null default '',
   course_of_study text not null default '',
   faculty text not null default '',
+  department text not null default '',
   level text not null default '',
   matriculation_number text not null default '',
   institution text not null default '',
@@ -23,6 +24,7 @@ create table if not exists users (
 
 alter table users add column if not exists course_of_study text not null default '';
 alter table users add column if not exists faculty text not null default '';
+alter table users add column if not exists department text not null default '';
 alter table users add column if not exists level text not null default '';
 alter table users add column if not exists matriculation_number text not null default '';
 alter table users add column if not exists institution text not null default '';

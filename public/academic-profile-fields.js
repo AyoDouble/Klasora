@@ -1,12 +1,14 @@
 (() => {
   const descendants = {
-    institution: ['faculty', 'courseOfStudy'],
-    faculty: ['courseOfStudy']
+    institution: ['faculty', 'department', 'courseOfStudy'],
+    faculty: ['department', 'courseOfStudy'],
+    department: ['courseOfStudy']
   };
 
   function sync(fields) {
     fields.faculty.disabled = !fields.institution.value.trim();
-    fields.courseOfStudy.disabled = fields.faculty.disabled || !fields.faculty.value.trim();
+    fields.department.disabled = fields.faculty.disabled || !fields.faculty.value.trim();
+    fields.courseOfStudy.disabled = fields.department.disabled || !fields.department.value.trim();
   }
 
   function resetAfterEdit(fields, field) {
@@ -28,6 +30,7 @@
     return {
       institution: fields.institution.value.trim(),
       faculty: fields.faculty.value.trim(),
+      department: fields.department.value.trim(),
       courseOfStudy: fields.courseOfStudy.value.trim()
     };
   }

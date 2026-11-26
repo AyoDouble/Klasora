@@ -118,7 +118,6 @@
       <nav class="refresh-mobile-menu" aria-label="Main navigation">${shortNav.map(id => { const item = navItems.find(entry => entry.id === id); return `<button type="button" data-route="${id}"><span>${iconMarkup(item.icon)}</span>${item.label}</button>`; }).join('')}</nav>`;
     content = shell.querySelector('#refreshContent');
     shell.addEventListener('click', onClick);
-    shell.addEventListener('input', onAcademicFieldInput);
     shell.addEventListener('submit', onSubmit);
     shell.addEventListener('change', onChange);
     document.getElementById('appScreen').appendChild(shell);
@@ -563,7 +562,7 @@
   async function renderProfile() {
     const currentUser = user();
     content.innerHTML = `
-      ${pageHeading('Your learning identity', 'Academic profile', 'A home for the details and campus activity you choose to share.', `<div class="refresh-inline-actions"><button class="refresh-secondary" type="button" data-route="settings">${iconMarkup('arrow-left')} Settings & more</button><button class="refresh-primary" type="button" data-action="save-profile">Save profile</button></div>`)}
+      ${pageHeading('Your learning identity', 'Academic profile', 'A home for the details and campus activity you choose to share.', `<div class="refresh-inline-actions"><button class="refresh-secondary" type="button" data-route="settings">${iconMarkup('arrow-left')} Settings & more</button></div>`)}
       <section class="refresh-card refresh-profile-banner">
         <div class="refresh-avatar refresh-avatar-lg refresh-profile-photo" id="profilePhotoPreview">${pictureMarkup(currentUser.profileImage, currentUser.name)}</div>
         <div class="refresh-profile-banner-copy">
@@ -588,19 +587,21 @@
       <div class="refresh-grid refresh-profile-grid">
         <section class="refresh-card refresh-profile-edit-card">
           <div class="refresh-card-pad">
-            <div class="refresh-section-head"><div><h2>Academic details</h2><p>Program, institution, level, and student number stay private.</p></div><span class="refresh-post-tag">Self-reported</span></div>
+            <div class="refresh-section-head"><div><h2>Academic details</h2><p>Institution, faculty, department, programme, level, and student number stay private.</p></div><span class="refresh-post-tag">Self-reported</span></div>
             <div class="refresh-field-grid">
               <div class="refresh-field"><label for="profileName">Full name</label><input id="profileName" maxlength="80" autocomplete="name" placeholder="Your full name"></div>
               <div class="refresh-field"><label for="profileEmail">Account email</label><input id="profileEmail" value="${escapeHtml(currentUser.email || '')}" disabled></div>
               <div class="refresh-field"><label for="profileInstitution">University / institution</label><input id="profileInstitution" list="nigerianUniversityOptions" maxlength="180" autocomplete="organization" placeholder="Search or type your university"><datalist id="nigerianUniversityOptions"></datalist><small class="refresh-field-hint" id="universityDirectoryStatus">Loading NUC university directory…</small><small class="refresh-field-hint">If your university isn't listed, type its name.</small></div>
-              <div class="refresh-field"><label for="profileFaculty">Faculty / college</label><input id="profileFaculty" maxlength="120" placeholder="Type the name used by your university" disabled></div>
-              <div class="refresh-field"><label for="profileCourseOfStudy">Course of study / programme</label><input id="profileCourseOfStudy" maxlength="120" placeholder="Type your course or programme" disabled></div>
+              <div class="refresh-field"><label for="profileFaculty">Faculty / college</label><input id="profileFaculty" maxlength="120" placeholder="Enter your faculty or college" disabled><small class="refresh-field-hint">No verified university-specific list is available yet.</small></div>
+              <div class="refresh-field"><label for="profileDepartment">Department</label><input id="profileDepartment" maxlength="120" placeholder="Enter your department" disabled><small class="refresh-field-hint">Enter the department under your selected faculty or college.</small></div>
+              <div class="refresh-field"><label for="profileCourseOfStudy">Course of study / programme</label><input id="profileCourseOfStudy" maxlength="120" placeholder="Enter your course or programme" disabled></div>
               <div class="refresh-field"><label for="profileLevel">Level</label><input id="profileLevel" maxlength="60" placeholder="e.g., 300 Level"></div>
               <div class="refresh-field"><label for="profileMatriculationNumber">Matriculation number</label><input id="profileMatriculationNumber" maxlength="80" autocomplete="off"></div>
               <div class="refresh-field refresh-profile-bio"><label for="profileBio">About you (optional)</label><textarea id="profileBio" maxlength="240" placeholder="A short introduction"></textarea></div>
             </div>
-            <p class="refresh-note">The university list is a snapshot from the NUC directory. The NUC does not publish a unified per-university faculty and programme catalog, so enter the exact names used by your school. Klasora does not verify enrollment or awards; these details are private to your account.</p>
+            <p class="refresh-note">The university list is a snapshot from the NUC directory. The NUC does not publish a unified faculty, department, or programme catalog, so enter the exact names used by your school. Klasora does not verify enrollment or awards; these details are private to your account. Save profile to approve and store your changes.</p>
           </div>
+          <div class="refresh-profile-save-row"><span id="profileSaveStatus" role="status" aria-live="polite"></span><button class="refresh-primary" type="button" data-action="save-profile">Save academic details</button></div>
         </section>
         <aside class="refresh-profile-side">
           <section class="refresh-card refresh-card-pad">
@@ -623,7 +624,7 @@
       const photo = state.profileImageDraft !== null ? state.profileImageDraft : current.profileImage;
       content.querySelector('#profileHeadingName').textContent = current.name || 'Student';
       content.querySelector('#profilePhotoPreview').innerHTML = pictureMarkup(photo, current.name);
-      content.querySelector('#profileAcademicSummary').textContent = [current.courseOfStudy, current.faculty, current.level].filter(Boolean).join(' · ') || 'Add your course and institution to complete your learning identity.';
+      content.querySelector('#profileAcademicSummary').textContent = [current.courseOfStudy, current.department, current.faculty, current.level].filter(Boolean).join(' · ') || 'Add your course and institution to complete your learning identity.';
       content.querySelector('#profileInstitutionSummary').textContent = current.institution || '';
       content.querySelector('#profileName').value = current.name || '';
       content.querySelector('#profileCourseOfStudy').value = current.courseOfStudy || '';
@@ -631,6 +632,7 @@
       content.querySelector('#profileMatriculationNumber').value = current.matriculationNumber || '';
       content.querySelector('#profileInstitution').value = current.institution || '';
       content.querySelector('#profileFaculty').value = current.faculty || '';
+      content.querySelector('#profileDepartment').value = current.department || '';
       content.querySelector('#profileBio').value = current.bio || '';
       syncAcademicProfileFields();
       loadUniversityDirectory().catch(error => {
@@ -1121,7 +1123,14 @@
 
   async function onChange(event) {
     const target = event.target;
-    if (target.matches('[data-call-search]')) {
+    if (['profileInstitution', 'profileFaculty', 'profileDepartment'].includes(target.id)) {
+      const changedField = {
+        profileInstitution: 'institution',
+        profileFaculty: 'faculty',
+        profileDepartment: 'department'
+      }[target.id];
+      window.KlasoraAcademicProfileFields.resetAfterEdit(getAcademicProfileFields(), changedField);
+    } else if (target.matches('[data-call-search]')) {
       state.callSearch = target.value;
       renderCallRows();
     } else if (target.matches('[data-action="notifications"]')) {
@@ -1152,21 +1161,13 @@
     return {
       institution: content.querySelector('#profileInstitution'),
       faculty: content.querySelector('#profileFaculty'),
+      department: content.querySelector('#profileDepartment'),
       courseOfStudy: content.querySelector('#profileCourseOfStudy')
     };
   }
 
   function syncAcademicProfileFields() {
     window.KlasoraAcademicProfileFields.sync(getAcademicProfileFields());
-  }
-
-  function onAcademicFieldInput(event) {
-    const changedField = {
-      profileInstitution: 'institution',
-      profileFaculty: 'faculty'
-    }[event.target.id];
-    if (!changedField) return;
-    window.KlasoraAcademicProfileFields.resetAfterEdit(getAcademicProfileFields(), changedField);
   }
 
   async function loadUniversityDirectory() {
@@ -1422,6 +1423,9 @@
     const name = content.querySelector('#profileName')?.value.trim();
     const bio = content.querySelector('#profileBio')?.value.trim();
     if (!name || name.length < 2) { toast('Enter a name with at least two characters.'); return; }
+    const saveButton = content.querySelector('[data-action="save-profile"]');
+    const saveStatus = content.querySelector('#profileSaveStatus');
+    if (saveButton?.disabled) return;
     const academicFields = window.KlasoraAcademicProfileFields.values(getAcademicProfileFields());
     const changes = {
       name,
@@ -1431,13 +1435,25 @@
       matriculationNumber: content.querySelector('#profileMatriculationNumber')?.value.trim() || '',
     };
     if (state.profileImageDraft !== null) changes.profileImage = state.profileImageDraft;
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving…';
+    }
+    if (saveStatus) saveStatus.textContent = 'Saving your academic details…';
     try {
       await window.KlasoraBridge.updateProfile(changes);
       state.profileImageDraft = null;
       paintIdentity();
       renderProfile();
       toast('Profile saved.');
-    } catch (error) { toast(`Could not save profile: ${error.message}`); }
+    } catch (error) {
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save academic details';
+      }
+      if (saveStatus) saveStatus.textContent = `Could not save: ${error.message}`;
+      toast(`Could not save profile: ${error.message}`);
+    }
   }
   function toast(message) {
     let element = shell?.querySelector('.refresh-toast');
