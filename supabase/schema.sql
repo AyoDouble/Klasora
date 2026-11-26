@@ -229,15 +229,18 @@ create table if not exists course_file_folders (
 alter table course_files add column if not exists folder_id uuid references course_file_folders(id) on delete set null;
 create index if not exists idx_course_file_folders_course_id on course_file_folders(course_id);
 create index if not exists idx_course_files_folder_id on course_files(folder_id);
-insert into storage.buckets (id, name, public)
-values ('course-files', 'course-files', false)
-on conflict (id) do nothing;
-insert into storage.buckets (id, name, public)
-values ('chat-files', 'chat-files', false)
-on conflict (id) do nothing;
-insert into storage.buckets (id, name, public)
-values ('profile-images', 'profile-images', false)
-on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('course-files', 'course-files', false, 26214400)
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit;
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('chat-files', 'chat-files', false, 10485760)
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('profile-images', 'profile-images', false, 409600, array['image/webp'])
+on conflict (id) do update set
+  public = false,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 -- The backend uses the Supabase service-role key, so direct public API access
 -- must be denied. Service-role requests continue to work because they bypass RLS.

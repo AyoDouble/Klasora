@@ -698,6 +698,30 @@ test('rejects unsupported profile image formats', async () => {
   assert.match(await response.text(), /compressed WebP/);
 });
 
+test('rejects a profile image whose bytes are not a real WebP image', async () => {
+  const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+  const fakeWebp = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x04, 0, 0, 0]), Buffer.from('WEBPbad!')]);
+  const response = await request('/api/me/profile', {
+    method: 'PATCH',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Test User', bio: '', profileImage: `data:image/webp;base64,${fakeWebp.toString('base64')}` })
+  });
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /valid WebP image/);
+});
+
+test('enforces the profile-picture size limit before storage access', async () => {
+  const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+  const oversizedPhoto = Buffer.alloc(400 * 1024 + 1).toString('base64');
+  const response = await request('/api/me/profile', {
+    method: 'PATCH',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Test User', bio: '', profileImage: `data:image/webp;base64,${oversizedPhoto}` })
+  });
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /400 KB or smaller/);
+});
+
 test('requires a file for authenticated uploads', async () => {
   const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
   const response = await request('/api/upload', {
@@ -706,6 +730,39 @@ test('requires a file for authenticated uploads', async () => {
   });
   assert.equal(response.status, 400);
   assert.match(await response.text(), /No file uploaded/);
+});
+
+test('rejects unsupported chat-upload bytes and reports the file-size limit', async () => {
+  const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+  const invalidForm = new FormData();
+  invalidForm.append('file', new Blob([Buffer.from([0, 0x13, 0x37, 0xff])], { type: 'image/png' }), 'picture.png');
+  const invalidResponse = await request('/api/upload', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` },
+    body: invalidForm
+  });
+  assert.equal(invalidResponse.status, 400);
+  assert.match(await invalidResponse.text(), /not supported/);
+
+  const largeForm = new FormData();
+  largeForm.append('file', new Blob([Buffer.alloc(10 * 1024 * 1024 + 1)], { type: 'application/octet-stream' }), 'large.bin');
+  const largeResponse = await request('/api/upload', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` },
+    body: largeForm
+  });
+  assert.equal(largeResponse.status, 413);
+  assert.match(await largeResponse.text(), /10 MB/);
+
+  const largeCourseForm = new FormData();
+  largeCourseForm.append('file', new Blob([Buffer.alloc(25 * 1024 * 1024 + 1)]), 'large-course-file.bin');
+  const largeCourseResponse = await request('/api/courses/test-course/files', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` },
+    body: largeCourseForm
+  });
+  assert.equal(largeCourseResponse.status, 413);
+  assert.match(await largeCourseResponse.text(), /25 MB/);
 });
 
 test('validates status updates before database access', async () => {
