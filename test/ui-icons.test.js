@@ -191,6 +191,8 @@ test('academic profile uses available activity data and labels unverified detail
   assert.match(profile, /api\('\/api\/pomodoro\/stats'\)/);
   assert.match(profile, /nigerianUniversityOptions/);
   assert.match(profile, /profileFaculty/);
+  assert.match(profile, /profileDepartment/);
+  assert.match(profile, /Save academic details/);
   assert.match(profile, /Self-reported details/);
   assert.match(profile, /does not verify enrollment or awards/);
   assert.match(profile, /Study streaks, mentors, and followers aren't tracked yet/);
@@ -203,32 +205,47 @@ test('academic selector cascades clear downstream values when a parent changes',
   const selection = {
     institution: { value: 'University of Ibadan', disabled: false },
     faculty: { value: 'Faculty of Science', disabled: false },
+    department: { value: 'Computer Science', disabled: false },
     courseOfStudy: { value: 'Computer Science', disabled: false }
   };
 
   fields.sync(selection);
   assert.equal(selection.faculty.disabled, false);
+  assert.equal(selection.department.disabled, false);
   assert.equal(selection.courseOfStudy.disabled, false);
   const savedFields = fields.values(selection);
   assert.equal(savedFields.institution, 'University of Ibadan');
   assert.equal(savedFields.faculty, 'Faculty of Science');
+  assert.equal(savedFields.department, 'Computer Science');
   assert.equal(savedFields.courseOfStudy, 'Computer Science');
 
   fields.resetAfterEdit(selection, 'faculty');
   assert.equal(selection.faculty.value, 'Faculty of Science');
+  assert.equal(selection.department.value, '');
+  assert.equal(selection.courseOfStudy.value, '');
+  assert.equal(selection.department.disabled, false);
+  assert.equal(selection.courseOfStudy.disabled, true);
+
+  selection.department.value = 'Computer Science';
+  selection.courseOfStudy.value = 'Computer Science';
+  fields.resetAfterEdit(selection, 'department');
+  assert.equal(selection.department.value, 'Computer Science');
   assert.equal(selection.courseOfStudy.value, '');
   assert.equal(selection.courseOfStudy.disabled, false);
 
   selection.courseOfStudy.value = 'Computer Science';
   fields.resetAfterEdit(selection, 'institution');
   assert.equal(selection.faculty.value, '');
+  assert.equal(selection.department.value, '');
   assert.equal(selection.courseOfStudy.value, '');
   assert.equal(selection.faculty.disabled, false);
+  assert.equal(selection.department.disabled, true);
   assert.equal(selection.courseOfStudy.disabled, true);
 
   selection.institution.value = '';
   fields.sync(selection);
   assert.equal(selection.faculty.disabled, true);
+  assert.equal(selection.department.disabled, true);
   assert.equal(selection.courseOfStudy.disabled, true);
 });
 

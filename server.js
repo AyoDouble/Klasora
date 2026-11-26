@@ -339,6 +339,7 @@ const profileUser = async u => {
     ...safeUser(u),
     courseOfStudy: u.courseOfStudy || '',
     faculty: u.faculty || '',
+    department: u.department || '',
     level: u.level || '',
     matriculationNumber: u.matriculationNumber || '',
     institution: u.institution || '',
@@ -571,6 +572,7 @@ app.patch('/api/me/profile', auth, async (req, res) => {
   const fields = {
     courseOfStudy: 120,
     faculty: 120,
+    department: 120,
     level: 60,
     matriculationNumber: 80,
     institution: 180
@@ -585,6 +587,9 @@ app.patch('/api/me/profile', auth, async (req, res) => {
   }
   if (update.faculty && !update.institution?.trim()) {
     return res.status(400).json({ error: 'Choose or enter a university before adding a faculty or college' });
+  }
+  if (update.department && !update.faculty?.trim()) {
+    return res.status(400).json({ error: 'Choose or enter a faculty or college before adding a department' });
   }
 
   let profileImage;
