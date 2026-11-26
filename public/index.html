@@ -684,6 +684,17 @@ video{border-radius:16px;background:#000;object-fit:cover;}
     </div>
   </aside>
 </div>
+<div class="refresh-alarm-banner" id="timerAlarmBanner" role="alert" aria-live="assertive" hidden>
+  <div class="refresh-alarm-copy">
+    <iconify-icon icon="lucide:alarm-clock" aria-hidden="true"></iconify-icon>
+    <strong>Timer finished</strong>
+    <span id="timerAlarmMessage">The alarm will keep ringing until you stop it.</span>
+  </div>
+  <div class="refresh-alarm-actions">
+    <button class="refresh-secondary" type="button" onclick="window.KlasoraRefresh?.returnToTimer()">View timer</button>
+    <button class="refresh-danger" type="button" onclick="window.KlasoraRefresh?.dismissAlarm()">Stop alarm</button>
+  </div>
+</div>
 <nav class="mobile-bottom-nav" aria-label="Main navigation">
   <button id="mobile-nav-home" onclick="window.KlasoraRefresh?.navigate('feed')"><span><iconify-icon icon="lucide:layout-dashboard" aria-hidden="true"></iconify-icon></span>Home</button>
   <button id="mobile-nav-cliques" onclick="window.KlasoraRefresh?.navigate('cliques')"><span><iconify-icon icon="lucide:users-round" aria-hidden="true"></iconify-icon></span>Cliques</button>
@@ -1796,9 +1807,7 @@ function prepareTimerSound(){
   }).catch(notifyTimerSoundFailure);
 }
 function playTimerSound(){
-  window.KlasoraTimerSound?.beep().then(played=>{
-    if(!played) showToast('volume-x','Timer sound unavailable','This browser does not support audio notifications.');
-  }).catch(notifyTimerSoundFailure);
+  window.KlasoraRefresh?.triggerAlarm();
 }
 function togglePom(){
   if(pomState.running){
@@ -1810,6 +1819,7 @@ function togglePom(){
     document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`;
     updatePomDisplay();
   }else{
+    window.KlasoraRefresh?.dismissAlarm();
     pomState.running=true;
     pomState.endAt=window.KlasoraTimerClock.deadlineAfter(pomState.secs);
     document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('pause')} Pause`;
@@ -1841,7 +1851,7 @@ function tickPom(){
   }
   setPomMode(pomState.mode==='focus'?'short':'focus');
 }
-function resetPom(){ clearInterval(pomState.interval); pomState.interval=null; pomState.endAt=null; pomState.running=false; pomState.secs=POM_MODES[pomState.mode]; document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; updatePomDisplay(); }
+function resetPom(){ window.KlasoraRefresh?.dismissAlarm(); clearInterval(pomState.interval); pomState.interval=null; pomState.endAt=null; pomState.running=false; pomState.secs=POM_MODES[pomState.mode]; document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; updatePomDisplay(); }
 function updatePomDisplay(){ const el=document.getElementById('pomTime'); if(el)el.textContent=fmtPom(pomState.secs); updatePomRing(); }
 function updatePomRing(){ const el=document.getElementById('pomProg'); if(!el)return; const circ=2*Math.PI*80; const offset=circ-(pomState.secs/pomState.total)*circ; el.style.strokeDashoffset=offset; }
 function fmtPom(s){ return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }

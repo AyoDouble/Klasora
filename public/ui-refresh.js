@@ -47,7 +47,7 @@
     returnToCalls: false,
     selectedDay: new Date().getDay(),
     events: [],
-    timer: { duration: 25 * 60, remaining: 25 * 60, running: false, interval: null, endAt: null, completionStarted: false, mode: 'capsule' },
+    timer: { duration: 25 * 60, remaining: 25 * 60, running: false, interval: null, endAt: null, completionStarted: false, alarmActive: false, alarmAudioFailed: false, mode: 'capsule' },
     challengeStartedAt: null,
     modal: null
   };
@@ -56,6 +56,7 @@
   let shell;
   let content;
   let toastTimer;
+  let timerAlarmGeneration = 0;
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -178,6 +179,7 @@
   function render() {
     if (!content || !shell) return;
     updateThemeIcon(window.KlasoraBridge?.theme || 'dark');
+    updateTimerAlarm();
     const title = pageTitle(state.route);
     shell.querySelector('#refreshTopTitle').textContent = `Klasora  /  ${title}`;
     shell.querySelectorAll('[data-route]').forEach(button => button.classList.toggle('active', button.dataset.route === state.route || (state.route === 'post' && button.dataset.route === 'feed') || (state.route === 'assignment' && button.dataset.route === 'assignments') || (state.route === 'challenge' && button.dataset.route === 'focus') || (state.route === 'results' && button.dataset.route === 'focus') || (state.route === 'liveStudy' && button.dataset.route === 'cliques') || (state.route === 'cliqueChat' && button.dataset.route === 'cliques') || (state.route === 'courseChat' && button.dataset.route === 'courses') || (state.route === 'profile' && button.dataset.route === 'settings') || (state.route === 'preferences' && button.dataset.route === 'settings')));
@@ -981,6 +983,7 @@
       state.timer.goal = '';
       state.timer.duration = 25 * 60;
       state.timer.remaining = state.timer.duration;
+      state.timer.completionStarted = false;
       state.challengeStartedAt = null;
       state.timer.running = false;
       setRoute('challenge');
@@ -1154,6 +1157,7 @@
   }
   function startTimer() {
     if (state.timer.running) return;
+    stopTimerAlarm();
     clearInterval(state.timer.interval);
     const route = state.timer.mode === 'challenge' ? 'challenge' : state.timer.mode === 'live' ? 'liveStudy' : 'focus';
     setRoute(route);
@@ -1192,6 +1196,7 @@
     else if (state.route === 'liveStudy') renderLiveStudy();
   }
   function resetTimer() {
+    stopTimerAlarm();
     pauseTimer();
     state.timer.remaining = state.timer.duration;
     state.timer.completionStarted = false;
@@ -1204,18 +1209,54 @@
     state.timer.completionStarted = true;
     state.timer.remaining = 0;
     pauseTimer();
-    window.KlasoraTimerSound?.beep().then(played => {
-      if (!played) toast('Timer sound is not supported by this browser.');
-    }).catch(error => {
-      console.warn('Timer sound could not be played:', error);
-      toast('Timer sound could not be played. Check your browser sound settings.');
-    });
+    triggerAlarm();
     if (state.timer.mode !== 'live') {
       try { await api('/api/pomodoro/complete', 'POST'); }
       catch (error) { toast(`Session complete, but stats could not be saved: ${error.message}`); }
     }
     setRoute('results');
     toast('Focus session complete. Well done!');
+  }
+  function updateTimerAlarm() {
+    const banner = document.getElementById('timerAlarmBanner');
+    if (!banner) return;
+    banner.hidden = !state.timer.alarmActive;
+    const message = document.getElementById('timerAlarmMessage');
+    if (message) message.textContent = state.timer.alarmAudioFailed
+      ? 'Audio could not play. Check browser sound settings, then stop this alarm to dismiss it.'
+      : 'The alarm will keep ringing until you stop it.';
+  }
+  function triggerAlarm() {
+    if (state.timer.alarmActive) return;
+    const generation = ++timerAlarmGeneration;
+    state.timer.alarmActive = true;
+    state.timer.alarmAudioFailed = false;
+    updateTimerAlarm();
+    Promise.resolve(window.KlasoraTimerSound?.startAlarm()).then(playing => {
+      if (generation !== timerAlarmGeneration || !state.timer.alarmActive) return;
+      state.timer.alarmAudioFailed = !playing;
+      updateTimerAlarm();
+      if (!playing) toast('Timer ended, but alarm audio could not play. Stop the visible alarm to dismiss it.');
+    }).catch(error => {
+      console.warn('Timer alarm could not be started:', error);
+      if (generation !== timerAlarmGeneration || !state.timer.alarmActive) return;
+      state.timer.alarmAudioFailed = true;
+      updateTimerAlarm();
+      toast('Timer ended, but alarm audio could not play. Stop the visible alarm to dismiss it.');
+    });
+  }
+  function stopTimerAlarm() {
+    timerAlarmGeneration += 1;
+    state.timer.alarmActive = false;
+    state.timer.alarmAudioFailed = false;
+    window.KlasoraTimerSound?.stopAlarm();
+    updateTimerAlarm();
+  }
+  function returnToTimer() {
+    const route = state.timer.completionStarted
+      ? 'results'
+      : state.timer.mode === 'challenge' ? 'challenge' : state.timer.mode === 'live' ? 'liveStudy' : 'focus';
+    navigate(route);
   }
   async function toggleAssignment(id) {
     const item = state.assignments.find(assignment => assignment._id === id);
@@ -1310,6 +1351,7 @@
 
   function close() {
     restoreCliqueChatSurface();
+    stopTimerAlarm();
     clearInterval(state.timer.interval);
     state.timer.interval = null;
     state.timer.running = false;
@@ -1318,6 +1360,7 @@
     state.timer.mode = 'capsule';
     state.timer.duration = 25 * 60;
     state.timer.remaining = state.timer.duration;
+    state.timer.completionStarted = false;
     state.challengeStartedAt = null;
     state.route = 'feed';
     shell?.classList.remove('refresh-enabled');
@@ -1332,7 +1375,7 @@
   });
 
   window.KlasoraRefresh = {
-    open, close, navigate, updateThemeIcon, openCalls: () => { state.messageView = 'calls'; state.returnToCalls = false; if (state.route === 'cliques') render(); else navigate('cliques'); }, renderAssignments, renderModalAfterLogin, openCliqueChat, backToConversations,
+    open, close, navigate, updateThemeIcon, triggerAlarm, dismissAlarm: stopTimerAlarm, returnToTimer, openCalls: () => { state.messageView = 'calls'; state.returnToCalls = false; if (state.route === 'cliques') render(); else navigate('cliques'); }, renderAssignments, renderModalAfterLogin, openCliqueChat, backToConversations,
     openCliquePins, openCliqueRequests: loadCliqueRequests, shareCliqueInvite: async () => {
       const clique = state.activeConversation;
       if (!clique || clique._chatType !== 'clique') return;
