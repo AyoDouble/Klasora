@@ -180,3 +180,73 @@ test('all refreshed navigation uses Klasora icons and the focus timer survives n
   assert.match(legacy, /document\.addEventListener\('visibilitychange',\(\)=>\{if\(pomState\.running\)tickPom\(\);\}\)/);
   assert.match(legacy, /deadlineAfter\(pomState\.secs\)/);
 });
+
+test('academic profile uses available activity data and labels unverified details honestly', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'public', 'ui-refresh.js'), 'utf8');
+  const profile = ui.match(/async function renderProfile\(\)[\s\S]*?(?=\n  async function renderAssignments\()/)?.[0];
+
+  assert.ok(profile, 'renderProfile must remain available');
+  assert.match(profile, /api\('\/api\/courses'\)/);
+  assert.match(profile, /api\('\/api\/posts'\)/);
+  assert.match(profile, /api\('\/api\/pomodoro\/stats'\)/);
+  assert.match(profile, /nigerianUniversityOptions/);
+  assert.match(profile, /profileFaculty/);
+  assert.match(profile, /Self-reported details/);
+  assert.match(profile, /does not verify enrollment or awards/);
+  assert.match(profile, /Study streaks, mentors, and followers aren't tracked yet/);
+  assert.match(profile, /Among the latest 100 feed posts/);
+});
+
+test('academic selector cascades clear downstream values when a parent changes', () => {
+  const document = { createElement: () => ({}) };
+  const fields = loadBrowserScript('academic-profile-fields.js', { document }).KlasoraAcademicProfileFields;
+  const selection = {
+    institution: { value: 'University of Ibadan', disabled: false },
+    faculty: { value: 'Faculty of Science', disabled: false },
+    courseOfStudy: { value: 'Computer Science', disabled: false }
+  };
+
+  fields.sync(selection);
+  assert.equal(selection.faculty.disabled, false);
+  assert.equal(selection.courseOfStudy.disabled, false);
+  const savedFields = fields.values(selection);
+  assert.equal(savedFields.institution, 'University of Ibadan');
+  assert.equal(savedFields.faculty, 'Faculty of Science');
+  assert.equal(savedFields.courseOfStudy, 'Computer Science');
+
+  fields.resetAfterEdit(selection, 'faculty');
+  assert.equal(selection.faculty.value, 'Faculty of Science');
+  assert.equal(selection.courseOfStudy.value, '');
+  assert.equal(selection.courseOfStudy.disabled, false);
+
+  selection.courseOfStudy.value = 'Computer Science';
+  fields.resetAfterEdit(selection, 'institution');
+  assert.equal(selection.faculty.value, '');
+  assert.equal(selection.courseOfStudy.value, '');
+  assert.equal(selection.faculty.disabled, false);
+  assert.equal(selection.courseOfStudy.disabled, true);
+
+  selection.institution.value = '';
+  fields.sync(selection);
+  assert.equal(selection.faculty.disabled, true);
+  assert.equal(selection.courseOfStudy.disabled, true);
+});
+
+test('NUC directory snapshot includes federal, state, and private institutions', () => {
+  const directory = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'data', 'nigerian-universities.json'), 'utf8'));
+  const options = [];
+  const document = { createElement: () => ({}) };
+  const { populateUniversityOptions } = loadBrowserScript('academic-profile-fields.js', { document }).KlasoraAcademicProfileFields;
+  const universities = Object.entries(directory.universities).flatMap(([type, names]) => names.map(name => ({ name, type })));
+
+  assert.match(directory.source, /National Universities Commission/);
+  assert.equal(universities.length, 356);
+  assert.match(directory.coverageNote, /does not publish per-institution faculties or programmes/);
+  populateUniversityOptions({
+    replaceChildren() { options.length = 0; },
+    appendChild(option) { options.push(option); }
+  }, universities);
+  assert.equal(options.length, 356);
+  assert.ok(options.some(option => option.value === 'University of Ibadan' && option.label === 'Federal'));
+  assert.ok(options.some(option => option.value === 'Babcock University,Ilishan-Remo' && option.label === 'Private'));
+});
