@@ -246,7 +246,10 @@
       renderFeedPosts(posts);
     }).catch(error => {
       if (requestId !== state.feedRequestId || state.route !== 'feed') return;
-      content.querySelector('.refresh-feed-layout section').innerHTML = `<div class="refresh-empty"><strong>Could not load campus posts</strong><p>${escapeHtml(error.message)}</p><button class="refresh-secondary" type="button" data-action="retry-feed">Try again</button></div>${state.localPosts.length ? `<div class="refresh-section-head" style="margin:22px 0 12px"><h2>Older posts saved on this browser</h2></div><p class="refresh-note">These posts are visible only to you and have not been shared with campus.</p>${state.localPosts.map(post => postCard(post)).join('')}` : ''}`;
+      const schemaRecovery = /community feed/i.test(error.message) && !/not configured/i.test(error.message)
+        ? `<p>In the Supabase project connected to this backend, open <strong>Dashboard → SQL Editor → New query</strong>, run the current full <code>supabase/schema.sql</code> from GitHub, then select Try again.</p><a class="refresh-secondary" style="display:inline-flex;margin:0 0 10px" href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer">Open Supabase dashboard</a>`
+        : '';
+      content.querySelector('.refresh-feed-layout section').innerHTML = `<div class="refresh-empty"><strong>Could not load campus posts</strong><p>${escapeHtml(error.message)}</p>${schemaRecovery}<button class="refresh-secondary" type="button" data-action="retry-feed">Try again</button></div>${state.localPosts.length ? `<div class="refresh-section-head" style="margin:22px 0 12px"><h2>Older posts saved on this browser</h2></div><p class="refresh-note">These posts are visible only to you and have not been shared with campus.</p>${state.localPosts.map(post => postCard(post)).join('')}` : ''}`;
     });
   }
 
