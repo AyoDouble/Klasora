@@ -116,6 +116,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .icon-pill:hover{background:var(--surface2);color:var(--text2);}
 .my-profile{display:flex;align-items:center;gap:0.7rem;padding:0.9rem 1.2rem;background:linear-gradient(90deg,var(--surface2),transparent);border-bottom:1px solid var(--border);}
 .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.78rem;flex-shrink:0;position:relative;}
+.avatar img{width:100%;height:100%;border-radius:inherit;object-fit:cover;}
 .av-dot{position:absolute;bottom:1px;right:1px;width:9px;height:9px;border-radius:50%;border:2px solid var(--surface);}
 .dot-on{background:var(--online);} .dot-off{background:var(--offline);}
 .uname{font-size:0.83rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1118,14 +1119,16 @@ function showApp(){
       return openChat({...item,_chatType:'dm'}).then(()=>startCall(type));
     },
     renderWorkspaceDetails,
+    refreshProfileIdentity:renderMyProfile,
     toggleTheme,
     setNotificationPreference:updateNotificationPreference,
     getProfile:()=>api('/api/me/profile'),
     logout:doLogout,
     updateProfile:async changes=>{
       const profile=await api('/api/me/profile','PATCH',changes);
-      myUser={...myUser,name:profile.name,bio:profile.bio,color:profile.color,theme:profile.theme};
-      persistAuthUser(myUser);
+      myUser={...myUser,name:profile.name,bio:profile.bio,color:profile.color,theme:profile.theme,profileImage:profile.profileImage};
+      const {profileImage,...storedUser}=myUser;
+      persistAuthUser(storedUser);
       renderMyProfile();
       return profile;
     },
@@ -1159,7 +1162,16 @@ function nextIntro(){if(introStep<INTRO_STEPS.length-1){introStep++;renderIntro(
 function finishIntro(){localStorage.setItem('meno_intro_seen','1');document.getElementById('introOverlay').classList.remove('show');}
 function renderMyProfile(){
   const av=document.getElementById('myAv'); av.style.background=(myUser.color||'#087e7b')+'22'; av.style.color=myUser.color||'#087e7b';
-  av.innerHTML=ini(myUser.name)+'<div class="av-dot dot-on"></div>';
+  av.replaceChildren();
+  if(myUser.profileImage){
+    const image=document.createElement('img');
+    image.src=myUser.profileImage;
+    image.alt='';
+    av.appendChild(image);
+  }else av.appendChild(document.createTextNode(ini(myUser.name)));
+  const presence=document.createElement('div');
+  presence.className='av-dot dot-on';
+  av.appendChild(presence);
   document.getElementById('myName').textContent=myUser.name;
   document.getElementById('myHandle').textContent=myUser.email;
 }

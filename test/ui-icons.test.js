@@ -180,3 +180,17 @@ test('all refreshed navigation uses Klasora icons and the focus timer survives n
   assert.match(legacy, /document\.addEventListener\('visibilitychange',\(\)=>\{if\(pomState\.running\)tickPom\(\);\}\)/);
   assert.match(legacy, /deadlineAfter\(pomState\.secs\)/);
 });
+
+test('academic profile uses available activity data and labels unverified details honestly', () => {
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'public', 'ui-refresh.js'), 'utf8');
+  const profile = ui.match(/async function renderProfile\(\)[\s\S]*?(?=\n  async function renderAssignments\()/)?.[0];
+
+  assert.ok(profile, 'renderProfile must remain available');
+  assert.match(profile, /api\('\/api\/courses'\)/);
+  assert.match(profile, /api\('\/api\/posts'\)/);
+  assert.match(profile, /api\('\/api\/pomodoro\/stats'\)/);
+  assert.match(profile, /Self-reported details/);
+  assert.match(profile, /does not currently verify enrollment or awards/);
+  assert.match(profile, /Study streaks, mentors, and followers aren't tracked yet/);
+  assert.match(profile, /Among the latest 100 feed posts/);
+});
