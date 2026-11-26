@@ -11,6 +11,48 @@ function loadBrowserScript(filename, extra = {}) {
   return window;
 }
 
+function createTimerSoundHarness(audioContextAvailable = true) {
+  const starts = [];
+  const frequencies = [];
+  const stops = [];
+  const intervals = new Map();
+  const clearedIntervals = [];
+  let nextIntervalId = 1;
+  const audioContext = {
+    state: 'suspended',
+    currentTime: 2,
+    destination: {},
+    async resume() { this.state = 'running'; },
+    createOscillator() {
+      return {
+        frequency: { set value(value) { frequencies.push(value); } },
+        connect() {},
+        start(time) { starts.push(time); },
+        stop(time) { stops.push(time === undefined ? 'immediate' : time); }
+      };
+    },
+    createGain() {
+      return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
+    }
+  };
+  class MockAudioContext {
+    constructor() { return audioContext; }
+  }
+  const { KlasoraTimerSound } = loadBrowserScript('timer-sound.js', {
+    window: { AudioContext: audioContextAvailable ? MockAudioContext : undefined },
+    setInterval(callback, delay) {
+      const id = nextIntervalId++;
+      intervals.set(id, { callback, delay });
+      return id;
+    },
+    clearInterval(id) {
+      clearedIntervals.push(id);
+      intervals.delete(id);
+    }
+  });
+  return { KlasoraTimerSound, audioContext, starts, frequencies, stops, intervals, clearedIntervals };
+}
+
 test('Iconify markup maps legacy glyphs and safely handles unknown names', () => {
   const { KlasoraIcons } = loadBrowserScript('icons.js');
 
@@ -27,43 +69,48 @@ test('Iconify markup maps legacy glyphs and safely handles unknown names', () =>
   assert.doesNotMatch(KlasoraIcons.markup('sun', 'theme-sun" onload="bad'), /onload=/);
 });
 
-test('timer sound prepares audio and schedules a short two-tone completion beep', async () => {
-  const starts = [];
-  const frequencies = [];
-  const audioContext = {
-    state: 'suspended',
-    currentTime: 2,
-    destination: {},
-    async resume() { this.state = 'running'; },
-    createOscillator() {
-      const oscillator = {
-        frequency: { set value(value) { frequencies.push(value); } },
-        connect() {},
-        start(time) { starts.push(time); },
-        stop() {}
-      };
-      return oscillator;
-    },
-    createGain() {
-      return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
-    }
-  };
-  class MockAudioContext {
-    constructor() { return audioContext; }
-  }
-  const { KlasoraTimerSound } = loadBrowserScript('timer-sound.js', { window: { AudioContext: MockAudioContext } });
-
+test('timer alarm repeats one ringtone loop and stops all tones when dismissed', async () => {
+  const { KlasoraTimerSound, audioContext, starts, frequencies, stops, intervals, clearedIntervals } = createTimerSoundHarness();
   assert.equal(await KlasoraTimerSound.prepare(), true);
   assert.equal(audioContext.state, 'running');
-  assert.equal(await KlasoraTimerSound.beep(), true);
+  assert.deepEqual(await Promise.all([
+    KlasoraTimerSound.startAlarm(),
+    KlasoraTimerSound.startAlarm(),
+    KlasoraTimerSound.startAlarm()
+  ]), [true, true, true]);
+  assert.equal(KlasoraTimerSound.isAlarmActive(), true);
+  assert.equal(intervals.size, 1);
+  assert.deepEqual([...intervals.values()].map(interval => interval.delay), [750]);
   assert.deepEqual(starts, [2, 2.24]);
   assert.deepEqual(frequencies, [660, 880]);
+
+  const [intervalId, interval] = [...intervals.entries()][0];
+  interval.callback();
+  assert.deepEqual(starts, [2, 2.24, 2, 2.24]);
+  KlasoraTimerSound.stopAlarm();
+  assert.equal(KlasoraTimerSound.isAlarmActive(), false);
+  assert.deepEqual(clearedIntervals, [intervalId]);
+  assert.equal(stops.filter(time => time === 'immediate').length, 4);
+  interval.callback();
+  assert.equal(starts.length, 4);
 });
 
-test('timer sound reports unsupported browsers without throwing', async () => {
-  const { KlasoraTimerSound } = loadBrowserScript('timer-sound.js');
+test('timer alarm reports unsupported browsers without starting a loop', async () => {
+  const { KlasoraTimerSound, intervals } = createTimerSoundHarness(false);
   assert.equal(await KlasoraTimerSound.prepare(), false);
-  assert.equal(await KlasoraTimerSound.beep(), false);
+  assert.equal(await KlasoraTimerSound.startAlarm(), false);
+  assert.equal(KlasoraTimerSound.isAlarmActive(), false);
+  assert.equal(intervals.size, 0);
+});
+
+test('timer alarm reports when browser audio cannot be unlocked', async () => {
+  const { KlasoraTimerSound, audioContext, intervals } = createTimerSoundHarness();
+  audioContext.resume = async () => {};
+
+  assert.equal(await KlasoraTimerSound.prepare(), false);
+  assert.equal(await KlasoraTimerSound.startAlarm(), false);
+  assert.equal(KlasoraTimerSound.isAlarmActive(), false);
+  assert.equal(intervals.size, 0);
 });
 
 test('deadline-based timer stays accurate when interval ticks are delayed', () => {
@@ -99,6 +146,9 @@ test('all refreshed navigation uses Klasora icons and the focus timer survives n
   const setRoute = ui.match(/function setRoute\(route\)\s*\{[\s\S]*?\n  \}/)?.[0];
   const tickTimer = ui.match(/function tickTimer\(\)\s*\{[\s\S]*?\n  \}/)?.[0];
   const completeTimer = ui.match(/async function completeTimer\(\)\s*\{[\s\S]*?\n  \}/)?.[0];
+  const resetTimer = ui.match(/function resetTimer\(\)\s*\{[\s\S]*?\n  \}/)?.[0];
+  const startTimer = ui.match(/function startTimer\(\)\s*\{[\s\S]*?\n  \}/)?.[0];
+  const resetPom = legacy.match(/function resetPom\(\)\s*\{[\s\S]*?\n/ )?.[0];
 
   assert.match(ui, /<nav class="refresh-mobile-menu"[\s\S]*?iconMarkup\(item\.icon\)/);
   assert.match(ui, /function manualTimerControls\(\)/);
@@ -112,7 +162,20 @@ test('all refreshed navigation uses Klasora icons and the focus timer survives n
   assert.match(ui, /document\.addEventListener\('visibilitychange'/);
   assert.ok(completeTimer, 'completeTimer must remain available in the refreshed app');
   assert.match(completeTimer, /completionStarted/);
-  assert.match(completeTimer, /KlasoraTimerSound\?\.beep/);
+  assert.match(completeTimer, /triggerAlarm\(\)/);
+  assert.match(ui, /function triggerAlarm\(\)/);
+  assert.match(ui, /function stopTimerAlarm\(\)/);
+  assert.match(ui, /banner\.hidden = !state\.timer\.alarmActive/);
+  assert.match(ui, /dismissAlarm: stopTimerAlarm/);
+  assert.ok(resetTimer, 'resetTimer must remain available in the refreshed app');
+  assert.match(resetTimer, /stopTimerAlarm\(\)/);
+  assert.ok(startTimer, 'startTimer must remain available in the refreshed app');
+  assert.match(startTimer, /stopTimerAlarm\(\)/);
+  assert.ok(resetPom, 'legacy resetPom must remain available');
+  assert.match(resetPom, /dismissAlarm/);
+  assert.match(ui, /timerAlarmGeneration/);
+  assert.match(legacy, /id="timerAlarmBanner"[\s\S]*?View timer[\s\S]*?Stop alarm/);
+  assert.match(legacy, /function playTimerSound\(\)\s*\{\s*window\.KlasoraRefresh\?\.triggerAlarm\(\);/);
   assert.match(legacy, /remainingSeconds\(pomState\.endAt\)/);
   assert.match(legacy, /document\.addEventListener\('visibilitychange',\(\)=>\{if\(pomState\.running\)tickPom\(\);\}\)/);
   assert.match(legacy, /deadlineAfter\(pomState\.secs\)/);
