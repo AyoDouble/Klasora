@@ -221,6 +221,14 @@
 .refresh-timer { margin: 14px 0; font: 800 clamp(54px,9vw,92px)/1 'Outfit',sans-serif; letter-spacing: -.06em; }
 .refresh-timer-ring { display: grid; width: 242px; height: 242px; max-width: 100%; margin: 22px auto; place-items: center; border: 8px solid var(--refresh-accent-soft); border-top-color: var(--refresh-accent); border-radius: 50%; }
 .refresh-timer-ring .refresh-timer { margin: 0; font-size: clamp(42px,7vw,61px); }
+.refresh-manual-timer { margin: 17px auto 10px; text-align: left; }
+.refresh-manual-timer > span { display: block; margin-bottom: 7px; color: var(--refresh-muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.refresh-manual-timer-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)) auto; align-items: end; gap: 7px; }
+.refresh-manual-timer-fields label { display: grid; gap: 4px; color: var(--refresh-muted); font-size: 9px; font-weight: 700; }
+.refresh-manual-timer-fields input { width: 100%; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--refresh-line); border-radius: 9px; color: var(--refresh-ink); background: var(--refresh-bg); font-size: 11px; }
+.refresh-manual-timer-fields input:focus { outline: 2px solid color-mix(in srgb,var(--refresh-accent) 30%,transparent); border-color: var(--refresh-accent); }
+.refresh-manual-timer-fields button { min-height: 34px; padding: 0 10px; white-space: nowrap; }
+.refresh-manual-timer-fields input:disabled,.refresh-manual-timer-fields button:disabled { opacity: .55; cursor: not-allowed; }
 .refresh-presets { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; }
 .refresh-chip { padding: 7px 10px; border: 1px solid var(--refresh-line); border-radius: 999px; color: var(--refresh-muted); background: transparent; font-size: 9px; font-weight: 700; cursor: pointer; }
 .refresh-chip.active { border-color: var(--refresh-accent); color: var(--refresh-accent); background: var(--refresh-accent-soft); }
