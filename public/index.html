@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/ui-refresh.css">
 <script defer src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
 <script src="/icons.js"></script>
+<script src="/timer-clock.js"></script>
 <script src="/timer-sound.js"></script>
 <script src="/ui-refresh.js"></script>
 <style>
@@ -893,7 +894,7 @@ function persistAuthUser(user){
 }
 
 // ── POMODORO STATE ────────────────────────────────────────────
-let pomState={ mode:'focus', running:false, secs:25*60, total:25*60, interval:null, sessToday:0, sessAll:0 };
+let pomState={ mode:'focus', running:false, secs:25*60, total:25*60, interval:null, endAt:null, sessToday:0, sessAll:0 };
 const POM_MODES = { focus:25*60, short:5*60, long:15*60 };
 
 // ── WEBRTC STATE ──────────────────────────────────────────────
@@ -1784,7 +1785,7 @@ async function renderPomodoro(){
   `;
   updatePomRing();
 }
-function setPomMode(m){ pomState.mode=m; pomState.running=false; clearInterval(pomState.interval); pomState.secs=POM_MODES[m]; pomState.total=POM_MODES[m]; document.querySelectorAll('.pom-mode').forEach(el=>el.classList.toggle('active',el.id===`pm-${m}`)); updatePomDisplay(); document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; document.getElementById('pomLabel').textContent=m.toUpperCase(); }
+function setPomMode(m){ if(pomState.running)return; pomState.mode=m; clearInterval(pomState.interval); pomState.interval=null; pomState.endAt=null; pomState.secs=POM_MODES[m]; pomState.total=POM_MODES[m]; document.querySelectorAll('.pom-mode').forEach(el=>el.classList.toggle('active',el.id===`pm-${m}`)); updatePomDisplay(); document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; document.getElementById('pomLabel').textContent=m.toUpperCase(); }
 function notifyTimerSoundFailure(error){
   console.warn('Timer sound unavailable:',error);
   showToast('volume-x','Timer sound unavailable','Check your browser sound settings and try again.');
@@ -1800,31 +1801,51 @@ function playTimerSound(){
   }).catch(notifyTimerSoundFailure);
 }
 function togglePom(){
-  pomState.running=!pomState.running;
-  document.getElementById('pomStartBtn').innerHTML=pomState.running?`${window.KlasoraIcons.markup('pause')} Pause`:`${window.KlasoraIcons.markup('play')} Start`;
   if(pomState.running){
+    pomState.secs=window.KlasoraTimerClock.remainingSeconds(pomState.endAt);
+    pomState.running=false;
+    pomState.endAt=null;
+    clearInterval(pomState.interval);
+    pomState.interval=null;
+    document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`;
+    updatePomDisplay();
+  }else{
+    pomState.running=true;
+    pomState.endAt=window.KlasoraTimerClock.deadlineAfter(pomState.secs);
+    document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('pause')} Pause`;
     prepareTimerSound();
-    pomState.interval=setInterval(async()=>{
-      pomState.secs--;
-      updatePomDisplay();
-      if(pomState.secs<=0){
-        clearInterval(pomState.interval);
-        pomState.running=false;
-        document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`;
-        playTimerSound();
-        if(pomState.mode==='focus'){
-          try{const s=await api('/api/pomodoro/complete','POST');pomState.sessToday=s.sessionsToday;pomState.sessAll=(document.getElementById('pomAll')?parseInt(document.getElementById('pomAll').textContent)||0:0)+1;document.getElementById('pomToday').textContent=pomState.sessToday;document.getElementById('pomAll').textContent=pomState.sessAll;}catch{}
-          showToast('party-popper','Focus session complete!','Great work! Take a break.');
-        }
-        setPomMode(pomState.mode==='focus'?'short':'focus');
-      }
-    },1000);
-  }else clearInterval(pomState.interval);
+    tickPom();
+    if(pomState.running) pomState.interval=setInterval(tickPom,1000);
+  }
 }
-function resetPom(){ clearInterval(pomState.interval); pomState.running=false; pomState.secs=POM_MODES[pomState.mode]; document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; updatePomDisplay(); }
+function tickPom(){
+  if(!pomState.running)return;
+  pomState.secs=window.KlasoraTimerClock.remainingSeconds(pomState.endAt);
+  updatePomDisplay();
+  if(pomState.secs>0)return;
+  clearInterval(pomState.interval);
+  pomState.interval=null;
+  pomState.running=false;
+  pomState.endAt=null;
+  document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`;
+  playTimerSound();
+  if(pomState.mode==='focus'){
+    api('/api/pomodoro/complete','POST').then(s=>{
+      pomState.sessToday=s.sessionsToday;
+      pomState.sessAll=(document.getElementById('pomAll')?parseInt(document.getElementById('pomAll').textContent)||0:0)+1;
+      const today=document.getElementById('pomToday'), all=document.getElementById('pomAll');
+      if(today)today.textContent=pomState.sessToday;
+      if(all)all.textContent=pomState.sessAll;
+    }).catch(error=>console.error('Could not save focus session stats:',error));
+    showToast('party-popper','Focus session complete!','Great work! Take a break.');
+  }
+  setPomMode(pomState.mode==='focus'?'short':'focus');
+}
+function resetPom(){ clearInterval(pomState.interval); pomState.interval=null; pomState.endAt=null; pomState.running=false; pomState.secs=POM_MODES[pomState.mode]; document.getElementById('pomStartBtn').innerHTML=`${window.KlasoraIcons.markup('play')} Start`; updatePomDisplay(); }
 function updatePomDisplay(){ const el=document.getElementById('pomTime'); if(el)el.textContent=fmtPom(pomState.secs); updatePomRing(); }
 function updatePomRing(){ const el=document.getElementById('pomProg'); if(!el)return; const circ=2*Math.PI*80; const offset=circ-(pomState.secs/pomState.total)*circ; el.style.strokeDashoffset=offset; }
 function fmtPom(s){ return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+document.addEventListener('visibilitychange',()=>{if(pomState.running)tickPom();});
 
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────
 async function setupPushNotifications(){

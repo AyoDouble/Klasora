@@ -47,7 +47,7 @@
     returnToCalls: false,
     selectedDay: new Date().getDay(),
     events: [],
-    timer: { duration: 25 * 60, remaining: 25 * 60, running: false, interval: null, mode: 'capsule' },
+    timer: { duration: 25 * 60, remaining: 25 * 60, running: false, interval: null, endAt: null, completionStarted: false, mode: 'capsule' },
     challengeStartedAt: null,
     modal: null
   };
@@ -92,7 +92,7 @@
       ? date.toLocaleDateString(undefined, { weekday: 'short' })
       : date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
   };
-  const fmtClock = seconds => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  const fmtClock = seconds => window.KlasoraTimerClock.formatClock(seconds);
   const pageTitle = id => ({ feed: 'Home', cliques: 'Cliques', cliqueChat: 'Clique conversations', calls: 'Calls', courses: 'Courses', courseChat: 'Course conversations', settings: 'Settings & more', preferences: 'Preferences & notifications', focus: 'Study capsule', timetable: 'Timetable', assignments: 'Assignments & tasks', profile: 'Academic profile', post: 'Post detail', assignment: 'Assignment detail', liveStudy: 'Live study room', challenge: 'Focus challenge', results: 'Session results' }[id] || 'Klasora');
 
   function makeShell() {
@@ -113,7 +113,7 @@
         <header class="refresh-topbar"><div class="refresh-top-title" id="refreshTopTitle">Campus hub</div><div class="refresh-top-actions"><button class="refresh-icon-btn" type="button" data-route="settings" aria-label="Settings & more" title="Settings & more">${iconMarkup('settings')}</button><button class="refresh-icon-btn" type="button" data-action="theme" aria-label="Toggle theme" title="Toggle theme">${themeIconMarkup(window.KlasoraBridge?.theme || 'dark')}</button></div></header>
         <div class="refresh-content" id="refreshContent"></div>
       </main>
-      <nav class="refresh-mobile-menu" aria-label="Main navigation">${shortNav.map(id => { const item = navItems.find(entry => entry.id === id); return `<button type="button" data-route="${id}"><span>${item.icon}</span>${item.label}</button>`; }).join('')}</nav>`;
+      <nav class="refresh-mobile-menu" aria-label="Main navigation">${shortNav.map(id => { const item = navItems.find(entry => entry.id === id); return `<button type="button" data-route="${id}"><span>${iconMarkup(item.icon)}</span>${item.label}</button>`; }).join('')}</nav>`;
     content = shell.querySelector('#refreshContent');
     shell.addEventListener('click', onClick);
     shell.addEventListener('submit', onSubmit);
@@ -168,7 +168,6 @@
       state.messageView = 'calls';
       route = 'cliques';
     }
-    if (state.timer.running && route !== state.route) pauseTimer();
     const conversationRoutes = ['cliqueChat', 'courseChat'];
     if (state.route !== route && (!conversationRoutes.includes(state.route) || !conversationRoutes.includes(route))) restoreCliqueChatSurface();
     state.route = route;
@@ -399,7 +398,7 @@
   }
 
   function renderCourses() {
-    content.innerHTML = `${pageHeading('Your classes', 'Courses', 'Keep class conversations, classmates, files, and assignments together.', '<button class="refresh-primary" type="button" data-action="create-course">＋ Create course</button>')}<div class="refresh-course-list"><div class="refresh-loading">Loading your courses…</div></div>`;
+    content.innerHTML = `${pageHeading('Your classes', 'Courses', 'Keep class conversations, classmates, files, and assignments together.', `<button class="refresh-primary" type="button" data-action="create-course">${iconMarkup('plus')} Create course</button>`)}<div class="refresh-course-list"><div class="refresh-loading">Loading your courses…</div></div>`;
     api('/api/courses').then(courses => {
       state.courses = courses;
       if (state.route !== 'courses') return;
@@ -513,14 +512,22 @@
     const presets = [{ label: 'Quick reset', minutes: 15 }, { label: 'Classic', minutes: 25 }, { label: 'Deep work', minutes: 50 }];
     const duration = Math.max(1, state.timer.duration);
     const progress = Math.max(0, Math.min(100, 100 * (1 - state.timer.remaining / duration)));
-    content.innerHTML = `${pageHeading('Find your rhythm', 'Study capsule', 'Choose a session length, then focus on one thing at a time.', `<button class="refresh-secondary" type="button" data-action="challenge">${iconMarkup('zap')} Take a focus challenge</button>`)}<div class="refresh-grid refresh-timer-layout"><section class="refresh-card refresh-timer-card"><div class="refresh-timer-label">${state.timer.running ? 'You’re in a focus session' : 'Your next focused session'}</div><div class="refresh-timer-ring"><div class="refresh-timer" id="timerDigits">${fmtClock(state.timer.remaining)}</div></div><div class="refresh-progress"><i id="timerProgress" style="width:${progress}%"></i></div><div class="refresh-presets" style="margin-top:17px">${presets.map(preset => `<button type="button" class="refresh-chip${duration === preset.minutes * 60 && state.timer.mode === 'capsule' ? ' active' : ''}" data-action="preset" data-minutes="${preset.minutes}">${preset.label} · ${preset.minutes}m</button>`).join('')}</div><div class="refresh-timer-actions"><button class="refresh-primary" type="button" data-action="${state.timer.running ? 'pause-timer' : 'start-timer'}">${state.timer.running ? `${iconMarkup('pause')} Pause` : `${iconMarkup('play')} Start focus`}</button><button class="refresh-secondary" type="button" data-action="reset-timer">${iconMarkup('rotate-ccw')} Reset</button></div><p class="refresh-note">Completed focus sessions are recorded with your existing Klasora focus stats. Your timer runs in this browser tab.</p></section><aside class="refresh-side-stack"><div class="refresh-card refresh-card-pad"><div class="refresh-section-head"><h2>Make it a challenge</h2><span>25 minutes</span></div><p class="refresh-note" style="margin-top:0">Set one goal and see it through. Your result is personal to this session.</p><button class="refresh-primary" style="width:100%;margin-top:13px" type="button" data-action="challenge">Start challenge ${iconMarkup('arrow-right')}</button></div><div class="refresh-card refresh-card-pad"><div class="refresh-section-head"><h2>Study together</h2></div><p class="refresh-note" style="margin-top:0">Choose a clique to open a local shared-study preview. Presence syncing is not available yet.</p><button class="refresh-secondary" style="width:100%;margin-top:13px" type="button" data-route="cliques">Choose a clique</button></div></aside></div>`;
+    content.innerHTML = `${pageHeading('Find your rhythm', 'Study capsule', 'Choose a session length, then focus on one thing at a time.', `<button class="refresh-secondary" type="button" data-action="challenge">${iconMarkup('zap')} Take a focus challenge</button>`)}<div class="refresh-grid refresh-timer-layout"><section class="refresh-card refresh-timer-card"><div class="refresh-timer-label">${state.timer.running ? 'You’re in a focus session' : 'Your next focused session'}</div><div class="refresh-timer-ring"><div class="refresh-timer" id="timerDigits">${fmtClock(state.timer.remaining)}</div></div><div class="refresh-progress"><i id="timerProgress" style="width:${progress}%"></i></div>${manualTimerControls()}<div class="refresh-presets">${presets.map(preset => `<button type="button" class="refresh-chip${duration === preset.minutes * 60 && state.timer.mode === 'capsule' ? ' active' : ''}" data-action="preset" data-minutes="${preset.minutes}">${preset.label} · ${preset.minutes}m</button>`).join('')}</div><div class="refresh-timer-actions"><button class="refresh-primary" type="button" data-action="${state.timer.running ? 'pause-timer' : 'start-timer'}">${state.timer.running ? `${iconMarkup('pause')} Pause` : `${iconMarkup('play')} Start focus`}</button><button class="refresh-secondary" type="button" data-action="reset-timer">${iconMarkup('rotate-ccw')} Reset</button></div><p class="refresh-note">Completed focus sessions are recorded with your Klasora focus stats. The timer continues while you navigate away or switch tabs, but stops when you close this page.</p></section><aside class="refresh-side-stack"><div class="refresh-card refresh-card-pad"><div class="refresh-section-head"><h2>Make it a challenge</h2><span>25 minutes</span></div><p class="refresh-note" style="margin-top:0">Set one goal and see it through. Your result is personal to this session.</p><button class="refresh-primary" style="width:100%;margin-top:13px" type="button" data-action="challenge">Start challenge ${iconMarkup('arrow-right')}</button></div><div class="refresh-card refresh-card-pad"><div class="refresh-section-head"><h2>Study together</h2></div><p class="refresh-note" style="margin-top:0">Choose a clique to open a local shared-study preview. Presence syncing is not available yet.</p><button class="refresh-secondary" style="width:100%;margin-top:13px" type="button" data-route="cliques">Choose a clique</button></div></aside></div>`;
+  }
+
+  function manualTimerControls() {
+    const hours = Math.floor(state.timer.duration / 3600);
+    const minutes = Math.floor((state.timer.duration % 3600) / 60);
+    const seconds = state.timer.duration % 60;
+    const disabled = state.timer.running ? ' disabled' : '';
+    return `<div class="refresh-manual-timer"><span>Set your own time</span><div class="refresh-manual-timer-fields"><label for="timerHours">Hours<input id="timerHours" type="number" min="0" step="1" value="${hours}"${disabled}></label><label for="timerMinutes">Minutes<input id="timerMinutes" type="number" min="0" max="59" step="1" value="${minutes}"${disabled}></label><label for="timerSeconds">Seconds<input id="timerSeconds" type="number" min="0" max="59" step="1" value="${seconds}"${disabled}></label><button class="refresh-secondary" type="button" data-action="set-manual-timer"${disabled}>Set time</button></div></div>`;
   }
 
   function renderChallenge() {
     if (state.timer.goal && (state.challengeStartedAt || state.timer.running)) {
       const elapsed = Math.floor((state.timer.duration - state.timer.remaining) / 60);
       const progress = 100 * (1 - state.timer.remaining / state.timer.duration);
-      content.innerHTML = `${pageHeading('One thing at a time', 'Challenge in progress', 'Keep going at your own pace. You can pause or reset this browser timer.', '<button class="refresh-secondary" type="button" data-route="focus">Exit challenge</button>')}<div class="refresh-card refresh-timer-card" style="max-width:680px;margin:0 auto"><div class="refresh-timer-label">Your goal · started ${elapsed} minute${elapsed === 1 ? '' : 's'} ago</div><h2 style="margin-top:9px;font:700 18px Outfit,sans-serif">${escapeHtml(state.timer.goal)}</h2><div class="refresh-timer-ring"><div class="refresh-timer" id="timerDigits">${fmtClock(state.timer.remaining)}</div></div><div class="refresh-progress"><i id="timerProgress" style="width:${progress}%"></i></div><div class="refresh-timer-actions"><button class="refresh-primary" type="button" data-action="${state.timer.running ? 'pause-timer' : 'start-timer'}">${state.timer.running ? `${iconMarkup('pause')} Pause challenge` : `${iconMarkup('play')} Resume challenge`}</button><button class="refresh-secondary" type="button" data-action="reset-timer">${iconMarkup('rotate-ccw')} Reset</button></div><p class="refresh-note">Your challenge timer is only visible on this device and will stop when you close the page.</p></div>`;
+      content.innerHTML = `${pageHeading('One thing at a time', 'Challenge in progress', 'Keep going at your own pace. You can pause or reset this browser timer.', '<button class="refresh-secondary" type="button" data-route="focus">Exit challenge</button>')}<div class="refresh-card refresh-timer-card" style="max-width:680px;margin:0 auto"><div class="refresh-timer-label">Your goal · started ${elapsed} minute${elapsed === 1 ? '' : 's'} ago</div><h2 style="margin-top:9px;font:700 18px Outfit,sans-serif">${escapeHtml(state.timer.goal)}</h2><div class="refresh-timer-ring"><div class="refresh-timer" id="timerDigits">${fmtClock(state.timer.remaining)}</div></div><div class="refresh-progress"><i id="timerProgress" style="width:${progress}%"></i></div><div class="refresh-timer-actions"><button class="refresh-primary" type="button" data-action="${state.timer.running ? 'pause-timer' : 'start-timer'}">${state.timer.running ? `${iconMarkup('pause')} Pause challenge` : `${iconMarkup('play')} Resume challenge`}</button><button class="refresh-secondary" type="button" data-action="reset-timer">${iconMarkup('rotate-ccw')} Reset</button></div><p class="refresh-note">Your timer continues while you navigate away or switch tabs, but stops when you close this page.</p></div>`;
       return;
     }
     content.innerHTML = `${pageHeading('A small commitment', 'Focus challenge', 'Pick one clear goal, then work on it without distraction.', `<button class="refresh-secondary" type="button" data-route="focus">${iconMarkup('arrow-left')} Back to capsule</button>`)}<div class="refresh-card refresh-card-pad" style="max-width:680px;margin:0 auto"><div class="refresh-eyebrow">25 minute challenge</div><h2 style="margin-top:8px;font:700 21px Outfit,sans-serif">What will you focus on?</h2><p class="refresh-heading-copy">This goal stays in this browser. You can update it before the timer starts.</p><form class="refresh-modal-form" data-form="challenge"><label class="refresh-form-label" for="challengeGoal">Your focus goal</label><textarea id="challengeGoal" name="goal" maxlength="160" placeholder="e.g. Review my lecture notes for biology" required></textarea><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="refresh-primary" type="submit">Begin challenge ${iconMarkup('arrow-right')}</button></div></form></div>`;
@@ -544,7 +551,7 @@
     const selected = week.find(date => date.getDay() === state.selectedDay) || week[(today.getDay() + 6) % 7];
     const events = state.events.filter(event => event.date === dateKey(selected)).sort((a, b) => a.time.localeCompare(b.time));
     const hours = Array.from({ length: 10 }, (_, index) => `${String(index + 8).padStart(2, '0')}:00`);
-    content.innerHTML = `${pageHeading('Plan your week', 'Timetable', 'A simple weekly view for classes, study blocks, and campus plans.', '<button class="refresh-primary" type="button" data-action="add-event">＋ Add to timetable</button>')}<div class="refresh-card refresh-card-pad"><div class="refresh-week">${week.map(date => `<button class="refresh-day${date.getDay() === state.selectedDay ? ' active' : ''}" type="button" data-action="select-day" data-day="${date.getDay()}"><strong>${date.toLocaleDateString(undefined,{weekday:'short'})}</strong><span>${date.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span></button>`).join('')}</div><div class="refresh-timeline"><div class="refresh-times">${hours.map(hour => `<span>${hour}</span>`).join('')}</div><div class="refresh-slots">${events.length ? events.map(event => { const [hour, minute] = event.time.split(':').map(Number); const row = Math.max(1, Math.min(20, (hour - 8) * 2 + Math.floor(minute / 30) + 1)); return `<div class="refresh-event" style="grid-row:${row}/span 2" title="${escapeHtml(event.title)}">${escapeHtml(event.time)} · ${escapeHtml(event.title)}${event.location ? ` · ${escapeHtml(event.location)}` : ''}</div>`; }).join('') : `<div class="refresh-empty" style="align-self:start;margin:35px 10px"><strong>No plans for ${selected.toLocaleDateString(undefined,{weekday:'long'})}</strong><p>Add a class or study block to this browser-only timetable.</p></div>`}</div></div><p class="refresh-note">Timetable entries are saved in this browser only; there is no timetable service connected yet.</p></div>`;
+    content.innerHTML = `${pageHeading('Plan your week', 'Timetable', 'A simple weekly view for classes, study blocks, and campus plans.', `<button class="refresh-primary" type="button" data-action="add-event">${iconMarkup('plus')} Add to timetable</button>`)}<div class="refresh-card refresh-card-pad"><div class="refresh-week">${week.map(date => `<button class="refresh-day${date.getDay() === state.selectedDay ? ' active' : ''}" type="button" data-action="select-day" data-day="${date.getDay()}"><strong>${date.toLocaleDateString(undefined,{weekday:'short'})}</strong><span>${date.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span></button>`).join('')}</div><div class="refresh-timeline"><div class="refresh-times">${hours.map(hour => `<span>${hour}</span>`).join('')}</div><div class="refresh-slots">${events.length ? events.map(event => { const [hour, minute] = event.time.split(':').map(Number); const row = Math.max(1, Math.min(20, (hour - 8) * 2 + Math.floor(minute / 30) + 1)); return `<div class="refresh-event" style="grid-row:${row}/span 2" title="${escapeHtml(event.title)}">${escapeHtml(event.time)} · ${escapeHtml(event.title)}${event.location ? ` · ${escapeHtml(event.location)}` : ''}</div>`; }).join('') : `<div class="refresh-empty" style="align-self:start;margin:35px 10px"><strong>No plans for ${selected.toLocaleDateString(undefined,{weekday:'long'})}</strong><p>Add a class or study block to this browser-only timetable.</p></div>`}</div></div><p class="refresh-note">Timetable entries are saved in this browser only; there is no timetable service connected yet.</p></div>`;
   }
 
   async function renderProfile() {
@@ -579,7 +586,7 @@
 
   async function renderAssignments() {
     if (!content || !shell || state.route !== 'assignments') return;
-    content.innerHTML = `${pageHeading('Keep your momentum', 'Assignments & tasks', 'Your course deadlines and personal tasks, without the last-minute scramble.', '<button class="refresh-primary" type="button" data-action="add-assignment">＋ Add assignment</button>')}<div class="refresh-grid refresh-stats" style="margin-bottom:17px"><div class="refresh-stat"><span>To do</span><strong id="assignmentTodo">—</strong></div><div class="refresh-stat"><span>Completed</span><strong id="assignmentDone">—</strong></div><div class="refresh-stat"><span>Upcoming</span><strong id="assignmentUpcoming">—</strong></div></div><div class="refresh-assignment-list"><div class="refresh-loading">Loading assignments…</div></div>`;
+    content.innerHTML = `${pageHeading('Keep your momentum', 'Assignments & tasks', 'Your course deadlines and personal tasks, without the last-minute scramble.', `<button class="refresh-primary" type="button" data-action="add-assignment">${iconMarkup('plus')} Add assignment</button>`)}<div class="refresh-grid refresh-stats" style="margin-bottom:17px"><div class="refresh-stat"><span>To do</span><strong id="assignmentTodo">—</strong></div><div class="refresh-stat"><span>Completed</span><strong id="assignmentDone">—</strong></div><div class="refresh-stat"><span>Upcoming</span><strong id="assignmentUpcoming">—</strong></div></div><div class="refresh-assignment-list"><div class="refresh-loading">Loading assignments…</div></div>`;
     try {
       const [assignments, courses] = await Promise.all([api('/api/homework'), api('/api/courses')]);
       state.assignments = assignments;
@@ -966,6 +973,10 @@
     }
     else if (action === 'solo') setRoute('focus');
     else if (action === 'challenge') {
+      if (state.timer.running) {
+        toast('Pause or finish your current session before starting a challenge.');
+        return;
+      }
       state.timer.mode = 'challenge';
       state.timer.goal = '';
       state.timer.duration = 25 * 60;
@@ -975,6 +986,22 @@
       setRoute('challenge');
     }
     else if (action === 'preset') setPreset(Number(target.dataset.minutes));
+    else if (action === 'set-manual-timer') {
+      const duration = window.KlasoraTimerClock.durationSeconds({
+        hours: content.querySelector('#timerHours')?.valueAsNumber,
+        minutes: content.querySelector('#timerMinutes')?.valueAsNumber,
+        seconds: content.querySelector('#timerSeconds')?.valueAsNumber
+      });
+      if (duration === null) {
+        toast('Enter a positive duration with whole hours and minutes or seconds below 60.');
+        return;
+      }
+      state.timer.mode = 'capsule';
+      state.timer.duration = duration;
+      state.timer.remaining = duration;
+      state.timer.completionStarted = false;
+      renderFocus();
+    }
     else if (action === 'start-timer') startTimer();
     else if (action === 'pause-timer') pauseTimer();
     else if (action === 'reset-timer') resetTimer();
@@ -1108,6 +1135,10 @@
     setRoute('liveStudy');
   }
   function startLiveSession() {
+    if (state.timer.running) {
+      setRoute('liveStudy');
+      return;
+    }
     state.timer.duration = 25 * 60;
     state.timer.remaining = state.timer.duration;
     state.timer.mode = 'live';
@@ -1122,10 +1153,13 @@
     renderFocus();
   }
   function startTimer() {
+    if (state.timer.running) return;
     clearInterval(state.timer.interval);
     const route = state.timer.mode === 'challenge' ? 'challenge' : state.timer.mode === 'live' ? 'liveStudy' : 'focus';
     setRoute(route);
     state.timer.running = true;
+    state.timer.endAt = window.KlasoraTimerClock.deadlineAfter(state.timer.remaining);
+    state.timer.completionStarted = false;
     render();
     window.KlasoraTimerSound?.prepare().then(supported => {
       if (!supported) toast('Timer sound is not supported by this browser.');
@@ -1134,11 +1168,11 @@
       toast('Timer sound could not be prepared. Check your browser sound settings.');
     });
     tickTimer();
-    state.timer.interval = setInterval(tickTimer, 1000);
+    if (state.timer.running) state.timer.interval = setInterval(tickTimer, 1000);
   }
   function tickTimer() {
     if (!state.timer.running) return;
-    state.timer.remaining = Math.max(0, state.timer.remaining - 1);
+    state.timer.remaining = window.KlasoraTimerClock.remainingSeconds(state.timer.endAt);
     const digits = shell?.querySelector('#timerDigits');
     if (digits) digits.textContent = fmtClock(state.timer.remaining);
     const progress = shell?.querySelector('#timerProgress');
@@ -1146,7 +1180,11 @@
     if (state.timer.remaining <= 0) completeTimer();
   }
   function pauseTimer() {
+    if (state.timer.running) {
+      state.timer.remaining = window.KlasoraTimerClock.remainingSeconds(state.timer.endAt);
+    }
     state.timer.running = false;
+    state.timer.endAt = null;
     clearInterval(state.timer.interval);
     state.timer.interval = null;
     if (state.route === 'challenge') renderChallenge();
@@ -1156,10 +1194,15 @@
   function resetTimer() {
     pauseTimer();
     state.timer.remaining = state.timer.duration;
+    state.timer.completionStarted = false;
     if (state.route === 'focus') renderFocus();
     else if (state.route === 'liveStudy') renderLiveStudy();
+    else if (state.route === 'challenge') renderChallenge();
   }
   async function completeTimer() {
+    if (!state.timer.running || state.timer.completionStarted) return;
+    state.timer.completionStarted = true;
+    state.timer.remaining = 0;
     pauseTimer();
     window.KlasoraTimerSound?.beep().then(played => {
       if (!played) toast('Timer sound is not supported by this browser.');
@@ -1270,6 +1313,7 @@
     clearInterval(state.timer.interval);
     state.timer.interval = null;
     state.timer.running = false;
+    state.timer.endAt = null;
     state.timer.goal = '';
     state.timer.mode = 'capsule';
     state.timer.duration = 25 * 60;
@@ -1282,6 +1326,10 @@
     shell?.querySelector('.refresh-modal-backdrop')?.remove();
     state.modal = null;
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (state.timer.running) tickTimer();
+  });
 
   window.KlasoraRefresh = {
     open, close, navigate, updateThemeIcon, openCalls: () => { state.messageView = 'calls'; state.returnToCalls = false; if (state.route === 'cliques') render(); else navigate('cliques'); }, renderAssignments, renderModalAfterLogin, openCliqueChat, backToConversations,
