@@ -66,7 +66,7 @@ Klasora is a real-time student social and study app built for university student
 ## Getting started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org) v20.9 or higher
+- [Node.js](https://nodejs.org) v22 or higher (required for the Supabase Realtime WebSocket transport)
 - A [Supabase](https://supabase.com) account with a new project
 - A [Railway](https://railway.app) account (for deployment)
 
