@@ -471,12 +471,14 @@ test('validates community post inputs before database access', async () => {
   });
   assert.equal(invalidComment.status, 400);
 
-  const unavailableFeed = await request('/api/posts', { headers: { authorization: `Bearer ${token}` } });
-  assert.equal(unavailableFeed.status, 503);
-  assert.match(await unavailableFeed.text(), /Community feed tables are missing or unavailable/i);
 });
 
 test('checks community table readiness and maps missing tables to service unavailable', async () => {
+  const unavailableHandlers = createCommunityPostHandlers({ supabase: null, io: { emit() {} } });
+  const unavailableResponse = await invokeHandler(unavailableHandlers.list, { userId: 'test-user' });
+  assert.equal(unavailableResponse.statusCode, 503);
+  assert.match(unavailableResponse.body.error, /Supabase is not configured on the backend/i);
+
   const missingTable = 'community_post_comments';
   const supabase = {
     from(table) {
